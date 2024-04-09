@@ -16,7 +16,7 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 
 Download the source code, and assuming you have gcc installed:
 1. Go to the directory where you copied the code files to
-2. Run `gcc -g -shared -sqlite-ndvss.c -o ndvss.dll`, change the **.dll** to **.so** for linux and **.dylib** for Mac.
+2. Run `gcc -g -shared -sqlite-ndvss.c -o ndvss.dll`, change the **.dll** (Windows) to **.so** for linux and **.dylib** for Mac.
 
 ## Loading the extension
 
