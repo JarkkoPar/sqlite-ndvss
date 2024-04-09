@@ -3,3 +3,5 @@ ndvss.dll
 test.db
 test2.db
 sqlite3.exe
+embed_test.db
+_embed_test.db
