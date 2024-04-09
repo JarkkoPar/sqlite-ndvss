@@ -495,14 +495,15 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
 }
 
 
+
 //----------------------------------------------------------------------------------------
-// Calculates the cosine similarity of a normalized vector compared to the given other 
+// Calculates the dot product similarity of a normalized vector compared to the given other 
 // normalized vector (assumed to be a column in the database).
 // Third parameter is the vector size.
 // The data is expected to be in a JSON array-format [0.0003403, 0.0343422, ... 0.0482384]
 // or just a list of doubles.
 //----------------------------------------------------------------------------------------
-static void ndvss_cosine_similarity_normalized_str( sqlite3_context* context,
+static void ndvss_dot_product_similarity_str( sqlite3_context* context,
                                                     int argc,
                                                     sqlite3_value** argv ) 
 {
@@ -736,11 +737,11 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
 
   rc = sqlite3_create_function( db, 
-                                "ndvss_cosine_similarity_normalized_str", // Function name 
+                                "ndvss_dot_product_similarity_str", // Function name 
                                 3, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
-                                ndvss_cosine_similarity_normalized_str, // xFunc -> Function pointer 
+                                ndvss_dot_product_similarity_str, // xFunc -> Function pointer 
                                 0, // xStep?
                                 0  // xFinal?
                                 );
