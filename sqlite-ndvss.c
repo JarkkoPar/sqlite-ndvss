@@ -1,65 +1,59 @@
 /*
-** 2024-04-08
-**
 ** This SQLite extension implements functions to perform vector
-** similarity searches. The extension's goal is to create a 
-** dependency-free solution that can easily be used in different
-** platforms.
+** similarity searches. 
 */
 #include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
-//#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
-#define NDVSS_VERSION_STRING  "0.1"
+#define NDVSS_VERSION_DOUBLE  0.2
 
 
-// Returns the current version of ndvss.
+//----------------------------------------------------------------------------------------
+// Name: ndvss_convert_str_to_array_d
+// Desc: Returns the current version of ndvss.
+// Args: None.
+// Returns: Version number as a DOUBLE.
+//----------------------------------------------------------------------------------------
 static void ndvss_version( sqlite3_context* context,
                            int argc,
                            sqlite3_value** argv ) 
 {
-  sqlite3_result_text(context, NDVSS_VERSION_STRING, -1, SQLITE_STATIC );
+  sqlite3_result_double(context, NDVSS_VERSION_DOUBLE );
 }
 
 
 //----------------------------------------------------------------------------------------
-// Converts a list of decimal numbers from a string to an array of doubles.
-// Arguments: The list of doubles TEXT, Number of dimensions INTEGER. 
-// Return value: The double-array as a BLOB.
+// Name: ndvss_convert_str_to_array_d
+// Desc: Converts a list of decimal numbers from a string to an array of doubles.
+// Args: List of decimal numbers TEXT, 
+//       Number of dimensions INTEGER
+// Returns: The double-array as a BLOB.
 //----------------------------------------------------------------------------------------
 static void ndvss_convert_str_to_array_d( sqlite3_context* context,
                                           int argc,
                                           sqlite3_value** argv ) 
 {
   if( argc < 2 ) {
-    // Not enough arguments.
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "2 arguments needs to be given: string to convert, array length.", -1);
     return;
   }
-  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ) {
-    // Text argument is NULL.
-    sqlite3_result_null(context);
-    return;
-  }
-  if( sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
-    // Dimension count argument is NULL.
-    sqlite3_result_null(context);
+  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
+    sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
 
   int num_dimensions = sqlite3_value_int(argv[1]);
   if( num_dimensions <= 0 ) {
-    // Seriously? Passing a 0 or negative-length arrays..?
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "Number of dimensions is 0.", -1);
     return;
   }
   int allocated_size = sizeof(double)*num_dimensions;
   double* output = (double*)sqlite3_malloc(allocated_size);
   if( output == 0 ) {
-    // Out of memory.
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "Out of memory.", -1);
     return;
   }
   char* input = (char*)sqlite3_value_text(argv[0]);
@@ -79,43 +73,37 @@ static void ndvss_convert_str_to_array_d( sqlite3_context* context,
   sqlite3_result_blob(context, output, allocated_size, sqlite3_free );
 }
 
+
 //----------------------------------------------------------------------------------------
-// Converts a list of decimal numbers from a string to an array of floats.
-// This will sacrifice precision for performance.
-// Arguments: The list of doubles TEXT, Number of dimensions INTEGER. 
-// Return value: The float-array as a BLOB.
+// Name: ndvss_convert_str_to_array_f
+// Desc: Converts a list of decimal numbers from a string to an array of floats.
+// Args: List of decimal numbers TEXT, 
+//       Number of dimensions INTEGER
+// Returns: The float-array as a BLOB.
 //----------------------------------------------------------------------------------------
-static void ndvss_convert_str_to_array_f(sqlite3_context* context,
-                                        int argc,
-                                        sqlite3_value** argv ) 
+static void ndvss_convert_str_to_array_f( sqlite3_context* context,
+                                          int argc,
+                                          sqlite3_value** argv ) 
 {
   if( argc < 2 ) {
-    // Not enough arguments.
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "2 arguments needs to be given: string to convert, array length.", -1);
     return;
   }
-  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ) {
-    // Text argument is NULL.
-    sqlite3_result_null(context);
-    return;
-  }
-  if( sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
-    // Dimension count argument is NULL.
-    sqlite3_result_null(context);
+  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
+    sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
 
   int num_dimensions = sqlite3_value_int(argv[1]);
   if( num_dimensions <= 0 ) {
-    // Seriously? Passing a 0 or negative-length arrays..?
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "Number of dimensions is 0.", -1);
     return;
   }
   int allocated_size = sizeof(float)*num_dimensions;
   float* output = (float*)sqlite3_malloc(allocated_size);
   if( output == 0 ) {
-    // Out of memory.
-    sqlite3_result_null(context);
+    sqlite3_result_error(context, "Out of memory.", -1);
     return;
   }
   char* input = (char*)sqlite3_value_text(argv[0]);
@@ -137,30 +125,28 @@ static void ndvss_convert_str_to_array_f(sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the cosine similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and that it contains an array of doubles.
-// Third parameter is the vector size.
+// Name: ndvss_cosine_similarity_d
+// Desc: Calculates the cosine similarity to a BLOB-converted array of doubles.
+// Args: Searched double array BLOB,
+//       Compared double array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as an angle DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_cosine_similarity_d( sqlite3_context* context,
                                        int argc,
                                        sqlite3_value** argv ) 
 {
   if( argc < 3 ) {
-    // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
       sqlite3_value_type(argv[1]) == SQLITE_NULL ||
       sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
-    // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
   if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
@@ -179,8 +165,7 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
     dividerB += (B*B);
   }
   if( dividerA == 0.0 || dividerB == 0.0 ) {
-    // There'd be a division by zero, so assume no similarity.
-    sqlite3_result_double(context, -1.0);  
+    sqlite3_result_error(context, "Division by zero.", -1);
     return;
   }
   double divider = sqrt(dividerA * dividerB);
@@ -190,30 +175,28 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the cosine similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and that it contains an array of floats.
-// Third parameter is the vector size.
+// Name: ndvss_cosine_similarity_f
+// Desc: Calculates the cosine similarity to a BLOB-converted array of floats.
+// Args: Searched float array BLOB,
+//       Compared float array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as an angle DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_cosine_similarity_f( sqlite3_context* context,
                                        int argc,
                                        sqlite3_value** argv ) 
 {
   if( argc < 3 ) {
-    // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
       sqlite3_value_type(argv[1]) == SQLITE_NULL ||
       sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
-    // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
   if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
@@ -233,7 +216,7 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   }
   if( dividerA == 0.0f || dividerB == 0.0f ) {
     // There'd be a division by zero, so assume no similarity.
-    sqlite3_result_double(context, -1.0);  
+    sqlite3_result_error(context, "Division by zero.", -1); 
     return;
   }
   float divider = sqrtf(dividerA * dividerB);
@@ -241,31 +224,30 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   sqlite3_result_double(context, (double)similarity);
 }
 
+
 //----------------------------------------------------------------------------------------
-// Calculates the euclidean distance similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and that it contains an array of doubles.
-// Third parameter is the vector size.
+// Name: ndvss_euclidean_distance_similarity_d
+// Desc: Calculates the euclidean distance similarity to a BLOB-converted array of doubles.
+// Args: Searched double array BLOB,
+//       Compared double array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
                                                    int argc,
                                                    sqlite3_value** argv ) 
 {
   if( argc < 3 ) {
-    // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
       sqlite3_value_type(argv[1]) == SQLITE_NULL ||
       sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
-    // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
   if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
@@ -284,10 +266,12 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the euclidean distance similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and that it contains an array of floats.
-// Third parameter is the vector size.
+// Name: ndvss_euclidean_distance_similarity_f
+// Desc: Calculates the euclidean distance similarity to a BLOB-converted array of floats.
+// Args: Searched float array BLOB,
+//       Compared float array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
                                                    int argc,
@@ -295,7 +279,6 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
@@ -326,11 +309,13 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the euclidean distance similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database).
-// Returns the squared results (no squareroot taken).
-// Assumes the column is of BLOB-type and that it contains an array of doubles.
-// Third parameter is the vector size.
+// Name: ndvss_euclidean_distance_similarity_squared_d
+// Desc: Calculates the euclidean distance similarity to a BLOB-converted array of doubles.
+//       Returns the squared result (i.e. doesn't calculate the square root).
+// Args: Searched double array BLOB,
+//       Compared double array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a squared distance DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* context,
                                                            int argc,
@@ -338,7 +323,6 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
@@ -368,11 +352,13 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the euclidean distance similarity of a vector compared to the given other 
-// vector (assumed to be a column in the database). 
-// Returns the squared results (no squareroot taken).
-// Assumes the column is of BLOB-type and that it contains an array of floats.
-// Third parameter is the vector size.
+// Name: ndvss_euclidean_distance_similarity_squared_f
+// Desc: Calculates the euclidean distance similarity to a BLOB-converted array of floats.
+//       Returns the squared result (i.e. doesn't calculate the square root).
+// Args: Searched float array BLOB,
+//       Compared float array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a squared distance DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* context,
                                                            int argc,
@@ -380,7 +366,6 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
@@ -410,10 +395,12 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the dot product similarity of a normalized vector compared to the given other 
-// normalized vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and contains an array of doubles.
-// Third parameter is the vector size.
+// Name: ndvss_dot_product_similarity_d
+// Desc: Calculates the dot product similarity to a BLOB-converted array of doubles.
+// Args: Searched double array BLOB,
+//       Compared double array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_dot_product_similarity_d( sqlite3_context* context,
                                             int argc,
@@ -421,7 +408,6 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
@@ -453,10 +439,12 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the dot product similarity of a normalized vector compared to the given other 
-// normalized vector (assumed to be a column in the database).
-// Assumes the column is of BLOB-type and contains an array of float.
-// Third parameter is the vector size.
+// Name: ndvss_dot_product_similarity_f
+// Desc: Calculates the dot product similarity to a BLOB-converted array of floats.
+// Args: Searched float array BLOB,
+//       Compared float array (usually a column) BLOB, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_dot_product_similarity_f( sqlite3_context* context,
                                             int argc,
@@ -464,7 +452,6 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    sqlite3_result_double(context, -1.0);
     sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
@@ -472,7 +459,7 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
       sqlite3_value_type(argv[1]) == SQLITE_NULL ||
       sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
-    sqlite3_result_error(context, "One of the given arguments is null.", -1);
+    sqlite3_result_error(context, "One of the given arguments is NULL.", -1);
     return;
   }
   if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
@@ -497,11 +484,13 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
 
 
 //----------------------------------------------------------------------------------------
-// Calculates the dot product similarity of a normalized vector compared to the given other 
-// normalized vector (assumed to be a column in the database).
-// Third parameter is the vector size.
-// The data is expected to be in a JSON array-format [0.0003403, 0.0343422, ... 0.0482384]
-// or just a list of doubles.
+// Name: ndvss_dot_product_similarity_str
+// Desc: Calculates the dot product similarity between two strings containing arrays of
+//       decimal numbers. The first argument (searched array) is cached as a BLOB.
+// Args: Searched array TEXT,
+//       Compared array (usually a column) TEXT, 
+//       Number of dimensions INTEGER
+// Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
 static void ndvss_dot_product_similarity_str( sqlite3_context* context,
                                                     int argc,
@@ -509,16 +498,14 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
 {
   if( argc < 3 ) {
     // Not enough arguments.
-    //sqlite3_mprintf("Error - Not enough arguments, 3 needed.\n");
-    sqlite3_result_double(context, -1.0);
+    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
       sqlite3_value_type(argv[1]) == SQLITE_NULL ||
       sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
     // Missing one of the required argument.
-    sqlite3_mprintf("Error - One of the arguments is NULL.\n");
-    sqlite3_result_double(context, -2.0);
+    sqlite3_result_error(context, "One of the given arguments is NULL.", -1);
     return;
   }
 
@@ -530,9 +517,7 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
   if( aux_array == 0 ) {
     comparison_vector = (double*)sqlite3_malloc(vector_size*sizeof(double));
     if(comparison_vector == 0 ) {
-      // Out of memory!
-      //sqlite3_mprintf("Error - could not allocate memory for the double-array of size %i.\n", vector_size);
-      sqlite3_result_double(context, -3.0);
+      sqlite3_result_error(context, "Out of memory.", -1);
       return;
     }
     char* search_vector = (char*)sqlite3_value_text(argv[0]);

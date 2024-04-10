@@ -53,11 +53,11 @@ FROM my_embeddings;
 
 ```SQL
 SELECT ID, -- ID to connect to other data
-       ndvss_cosine_similarity_d(   -- Selected similarity function
+       ndvss_euclidean_distance_similarity_d(   -- Selected similarity function
             ndvss_convert_str_to_array_d('0.9, 0.1, 0.0, 0.881', 4), -- What to search for
             EMBEDDING, -- Column to compare to
             4 ) -- Number of dimensions
 FROM my_embeddings
-ORDER BY 2 DESC
+ORDER BY 2
 LIMIT 2;
 ```
