@@ -7,6 +7,8 @@ sqlite-ndvss doesn't use any external dependencies to do its thing, making it po
 
 sqlite-ndvss was created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 
+You can find example SQL queries [here](examples/examples.md).
+
 ## Installation
 
 Copy the binaries to the folder where you have your sqlite3 executable. 
