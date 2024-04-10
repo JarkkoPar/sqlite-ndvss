@@ -8,3 +8,5 @@ _embed_test.db
 sqlite3.c
 sqlite3.h
 sqlite3ext.h
+ndvss.so
+ndvss.dylib
