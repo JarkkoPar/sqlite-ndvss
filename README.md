@@ -14,14 +14,18 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 
 ## Compilation
 
-Download the source code, and assuming you have gcc installed:
-1. Go to the directory where you copied the code files to
-2. Run `gcc -g -shared -sqlite-ndvss.c -o ndvss.dll`, change the **.dll** (Windows) to **.so** for linux and **.dylib** for Mac.
+1. Download the source code and extract it to some folder.
+2. Copy in the sqlite3.c, sqlite3.h and sqlite3ext.h files to the same folder (get them from https://sqlite.org/download.html). 
+3. Open terminal/command prompt and change to the directory where you have the source code files.
+4. Compile using the platform-specific command below:
+**Windows**:`gcc -g -shared -sqlite-ndvss.c -o ndvss.dll`.
+**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so`
+**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib`
 
 ## Loading the extension
 
-Open a database and load the extension by running `.load ./ndvss`. Change the path if needed to match where you've saved the extension files.
-You can now use the ndvss-functions in your SQL code.
+Open a database and load the extension by running `.load ./ndvss`. Change the path if needed to match where you've saved the extension files, or copy the dll/so/dylib to a directory that is included in your system path variables.
+Once loaded, you can use the ndvss-functions in your SQL code.
 
 ## Functions
 
