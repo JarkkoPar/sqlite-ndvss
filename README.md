@@ -19,7 +19,7 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 3. Open terminal/command prompt and change to the directory where you have the source code files.
 4. Compile using the platform-specific command below:
 
-**Windows**:`gcc -g -shared -sqlite-ndvss.c -o ndvss.dll`.
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll`.
 
 **Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so`
 
