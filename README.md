@@ -9,6 +9,26 @@ sqlite-ndvss was created to try out RAG with LLM's without having to install mor
 
 You can find example SQL queries [here](examples/examples.md).
 
+## What kind of performance can I expect?
+
+The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is a static loop unrolling, which speeds up the for-loops in the similarity functions.
+
+On my Asus laptop with an Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD from year 2012, I get following results with 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
+
+|Similarity function|DOUBLE/FLOAT|Runtime (s)|
+|--|--|--|
+|Cosine|DOUBLE|2.20|
+|Cosine|FLOAT|1.83|
+|Euclidean distance|DOUBLE|1.80|
+|Euclidean distance|FLOAT|1.50|
+|Euclidean distance squared|DOUBLE|1.80|
+|Euclidean distance squared|FLOAT|1.50|
+|Dot product|DOUBLE|1.79|
+|Dot product|FLOAT|1.49|
+
+Modern hardware gets of course much better results.
+
+
 ## Installation
 
 Copy the binaries to the folder where you have your sqlite3 executable. 

@@ -158,13 +158,38 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
   double dividerA = 0.0;
   double dividerB = 0.0;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  int i = 0;
+  //#pragma GCC ivdep
+  for( ; i + 3 < vector_size; i += 4 ) {
     double A = searched_array[i];
     double B = column_array[i];
     similarity += (A*B);
     dividerA += (A*A);
     dividerB += (B*B);
+
+    A = searched_array[i+1];
+    B = column_array[i+1];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+    A = searched_array[i+2];
+    B = column_array[i+2];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+     A = searched_array[i+3];
+    B = column_array[i+3];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+  }
+  for(; i < vector_size; ++i ) {
+    double A = searched_array[i];
+    double B = column_array[i];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+
   }
   if( dividerA == 0.0 || dividerB == 0.0 ) {
     sqlite3_result_error(context, "Division by zero.", -1);
@@ -211,13 +236,37 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   float dividerA = 0.0f;
   float dividerB = 0.0f;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  int i = 0;
+  for( ; i + 3 < vector_size; i += 4 ) {
     float A = searched_array[i];
     float B = column_array[i];
     similarity += (A*B);
     dividerA += (A*A);
     dividerB += (B*B);
+
+    A = searched_array[i+1];
+    B = column_array[i+1];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+    A = searched_array[i+2];
+    B = column_array[i+2];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+     A = searched_array[i+3];
+    B = column_array[i+3];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+  }
+  for(; i < vector_size; ++i ) {
+    float A = searched_array[i];
+    float B = column_array[i];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+
   }
   if( dividerA == 0.0f || dividerB == 0.0f ) {
     // There'd be a division by zero, so assume no similarity.
@@ -262,8 +311,18 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  int i = 0;
+  for( ; i + 3 < vector_size; i += 4 ) {
+    double AB = (searched_array[i] - column_array[i]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+1] - column_array[i+1]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+2] - column_array[i+2]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+3] - column_array[i+3]);
+    similarity += (AB * AB);
+  }
+  for( ; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
   }
@@ -307,8 +366,18 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  int i = 0; 
+  for( ; i + 3 < vector_size; i += 4 ) {
+    float AB = (searched_array[i] - column_array[i]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+1] - column_array[i+1]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+2] - column_array[i+2]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+3] - column_array[i+3]);
+    similarity += (AB * AB);
+  }
+  for( ; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
   }
@@ -353,8 +422,19 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  //#pragma GCC ivdep
+  int i = 0;
+  for( ; i + 3 < vector_size; i += 4 ) {
+    double AB = (searched_array[i] - column_array[i]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+1] - column_array[i+1]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+2] - column_array[i+2]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+3] - column_array[i+3]);
+    similarity += (AB * AB);
+  }
+  for( ; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
   }
@@ -398,8 +478,19 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  //#pragma GCC ivdep
+  int i = 0; 
+  for( ; i + 3 < vector_size; i += 4 ) {
+    float AB = (searched_array[i] - column_array[i]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+1] - column_array[i+1]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+2] - column_array[i+2]);
+    similarity += (AB * AB);
+    AB = (searched_array[i+3] - column_array[i+3]);
+    similarity += (AB * AB);
+  }
+  for( ; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
   }
@@ -442,11 +533,16 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  //#pragma GCC ivdep
+  int i = 0;
+  for( ; i + 3 < vector_size; i += 4 ) {
     similarity += ((searched_array[i]) * (column_array[i]));
-    //++searched_array;
-    //++column_array;
+    similarity += ((searched_array[i+1]) * (column_array[i+1]));
+    similarity += ((searched_array[i+2]) * (column_array[i+2]));
+    similarity += ((searched_array[i+3]) * (column_array[i+3]));
+  }
+  for( ; i < vector_size; ++i ) {
+    similarity += ((searched_array[i]) * (column_array[i]));
   }
 
   sqlite3_result_double(context, similarity);
@@ -488,11 +584,16 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
   
-  //pragma GCC ivdep
-  for( int i = 0; i < vector_size; ++i ) {
+  //#pragma GCC ivdep
+  int i = 0;
+  for( ; i + 3 < vector_size; i += 4 ) {
     similarity += ((searched_array[i]) * (column_array[i]));
-    //++searched_array;
-    //++column_array;
+    similarity += ((searched_array[i+1]) * (column_array[i+1]));
+    similarity += ((searched_array[i+2]) * (column_array[i+2]));
+    similarity += ((searched_array[i+3]) * (column_array[i+3]));
+  }
+  for( ; i < vector_size; ++i ) {
+    similarity += ((searched_array[i]) * (column_array[i]));
   }
 
   sqlite3_result_double(context, (double)similarity);
