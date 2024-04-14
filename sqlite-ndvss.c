@@ -183,6 +183,7 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
     dividerA += (A*A);
     dividerB += (B*B);
   }
+  //#pragma GCC ivdep
   for(; i < vector_size; ++i ) {
     double A = searched_array[i];
     double B = column_array[i];
@@ -237,6 +238,8 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   float dividerB = 0.0f;
   
   int i = 0;
+  //#pragma GCC ivdep
+  /**/
   for( ; i + 3 < vector_size; i += 4 ) {
     float A = searched_array[i];
     float B = column_array[i];
@@ -260,6 +263,8 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
     dividerA += (A*A);
     dividerB += (B*B);
   }
+  //#pragma GCC ivdep
+  /**/
   for(; i < vector_size; ++i ) {
     float A = searched_array[i];
     float B = column_array[i];
