@@ -157,7 +157,8 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
   double similarity = 0.0;
   double dividerA = 0.0;
   double dividerB = 0.0;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     double A = searched_array[i];
     double B = column_array[i];
@@ -209,7 +210,8 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   float similarity = 0.0f;
   float dividerA = 0.0f;
   float dividerB = 0.0f;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     float A = searched_array[i];
     float B = column_array[i];
@@ -259,7 +261,8 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -303,7 +306,8 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -348,7 +352,8 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -392,7 +397,8 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -435,7 +441,8 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     similarity += ((searched_array[i]) * (column_array[i]));
     //++searched_array;
@@ -480,7 +487,8 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
-  #pragma GCC ivdep
+  
+  //pragma GCC ivdep
   for( int i = 0; i < vector_size; ++i ) {
     similarity += ((searched_array[i]) * (column_array[i]));
     //++searched_array;
