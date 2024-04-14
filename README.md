@@ -1,5 +1,5 @@
 # sqlite-ndvss
-sqlite-ndvss is a No-Dependency Vector Similarity Search extension for SQLite. 
+sqlite-ndvss is a No-Dependency Vector Similarity Search (VSS) extension for SQLite. 
 
 It enables conversion of a string containing a list of decimal numbers to a BLOB of floats or doubles for storing the data, and the use of euclidean, dot product and cosine similarity functions to perform searches. 
 
@@ -21,7 +21,7 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 3. Open terminal/command prompt and change to the directory where you have the source code files.
 4. Compile using the platform-specific command below:
 
-**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll`.
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll`. 
 
 **Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so`
 
@@ -48,6 +48,7 @@ Once loaded, you can use the ndvss-functions in your SQL code.
 |**ndvss_dot_product_similarity_f**|Vector to search for (BLOB), Vector to compare to (BLOB), Number of dimensions (INT)|Similarity score (DOUBLE)|Calculates the dot product similarity between the vectors of floats given as arguments. The vectors need to be of the same data type (float) and contain the same number of dimensions.|
 |**ndvss_dot_product_similarity_d**|Vector to search for (BLOB), Vector to compare to (BLOB), Number of dimensions (INT)|Similarity score (DOUBLE)|Calculates the dot product similarity between the vectors of doubles given as arguments. The vectors need to be of the same data type (double) and contain the same number of dimensions.|
 |**ndvss_dot_product_similarity_str**|Vector to search for (TEXT), Vector to compare to (TEXT), Number of dimensions (INT)|Similarity score (DOUBLE)|Calculates the dot product similarity between the strings containing arrays of decimal numbers given as arguments. The vectors need to be of the same data type (double) and contain the same number of dimensions. The first argument is cached and is expected to be the array that is being searched.|
+
 
 
 ## If you find a bug

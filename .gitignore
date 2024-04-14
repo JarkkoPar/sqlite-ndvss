@@ -1,12 +1,8 @@
-sqlite-ndvss.dll
-ndvss.dll
-test.db
-test2.db
-sqlite3.exe
-embed_test.db
-_embed_test.db
+*.db
+*.dll
+*.exe
+*.dylib
+*.so
 sqlite3.c
 sqlite3.h
 sqlite3ext.h
-ndvss.so
-ndvss.dylib
