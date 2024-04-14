@@ -7,7 +7,7 @@ SQLITE_EXTENSION_INIT1
 #include <stdlib.h>
 #include <math.h>
 
-#define NDVSS_VERSION_DOUBLE  0.25
+#define NDVSS_VERSION_DOUBLE  0.3
 
 
 //----------------------------------------------------------------------------------------
