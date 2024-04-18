@@ -17,14 +17,16 @@ On my Asus laptop with an Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SS
 
 |Similarity function|DOUBLE/FLOAT|Runtime (s)|
 |--|--|--|
-|Cosine|DOUBLE|2.20|
-|Cosine|FLOAT|1.83|
-|Euclidean distance|DOUBLE|1.80|
-|Euclidean distance|FLOAT|1.50|
-|Euclidean distance squared|DOUBLE|1.80|
-|Euclidean distance squared|FLOAT|1.50|
-|Dot product|DOUBLE|1.79|
-|Dot product|FLOAT|1.49|
+|Cosine|DOUBLE|1.56|
+|Cosine|FLOAT|1.44|
+|Euclidean distance|DOUBLE|1.99|
+|Euclidean distance|FLOAT|1.09|
+|Euclidean distance squared|DOUBLE|1.19|
+|Euclidean distance squared|FLOAT|1.10|
+|Dot product|DOUBLE|1.19|
+|Dot product|FLOAT|1.09|
+
+The test were done by loading the database into a `:memory:` database and timing the duration to run a SELECT statement that calculates the similarity for a random 1536 vector, ordering by the similarity score: `SELECT ID, ndvss_cosine_similarity_d( ndvss_convert_str_to_array_d('" + vector + "', 1536), EMBEDDING, 1536) FROM embeddings_d ORDER BY 2` for doubles and similarly with a table containing floats. If you run your query to a database on disk the speed of your SDD/HDD will cause differences in the results.
 
 Modern hardware gets of course much better results.
 

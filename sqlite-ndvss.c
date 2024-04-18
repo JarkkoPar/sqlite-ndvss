@@ -6,6 +6,11 @@
 SQLITE_EXTENSION_INIT1
 #include <stdlib.h>
 #include <math.h>
+//#define USE_AVX 1 // Comment this out if you don't want to use AVX extensions.
+#ifdef USE_AVX
+#include <immintrin.h>
+#endif
+
 
 #define NDVSS_VERSION_DOUBLE  0.3
 
@@ -157,9 +162,35 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
   double similarity = 0.0;
   double dividerA = 0.0;
   double dividerB = 0.0;
-  
   int i = 0;
-  //#pragma GCC ivdep
+  #ifdef USE_AVX
+  __m256d A, B, AA, BB, AB, mmdividerA, mmdividerB, mmsimilarity;
+  for( ; i + 3 < vector_size; i += 4 ) {
+    //A = _mm256_load_pd(searched_array + i);
+    //B = _mm256_load_pd(column_array + i);
+    A = _mm256_set_pd( searched_array[i], searched_array[i+1], searched_array[i+2], searched_array[i+3]);
+    B = _mm256_set_pd( column_array[i], column_array[i+1], column_array[i+2], column_array[i+3]);
+    AA = _mm256_mul_pd(A, A);
+    BB = _mm256_mul_pd(B, B);
+    AB = _mm256_mul_pd(A, B);
+
+    double* result = (double *)&AB;
+    similarity += result[0] + result[1] + result[2] + result[3];
+    result = (double *)&AA;
+    dividerA += result[0] + result[1] + result[2] + result[3];
+    result = (double *)&BB;
+    dividerB += result[0] + result[1] + result[2] + result[3];
+  }
+  for(; i < vector_size; ++i ) {
+    double Ax = searched_array[i];
+    double Bx = column_array[i];
+    similarity += (Ax*Bx);
+    dividerA += (Ax*Ax);
+    dividerB += (Bx*Bx);
+
+  }
+  #else
+  // Non-AVX implementation.
   for( ; i + 3 < vector_size; i += 4 ) {
     double A = searched_array[i];
     double B = column_array[i];
@@ -192,6 +223,7 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
     dividerB += (B*B);
 
   }
+  #endif
   if( dividerA == 0.0 || dividerB == 0.0 ) {
     sqlite3_result_error(context, "Division by zero.", -1);
     return;
@@ -239,7 +271,8 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   
   int i = 0;
   //#pragma GCC ivdep
-  /**/
+  /**/ // 
+  //for( ; i + 7 < vector_size; i += 8 ) {
   for( ; i + 3 < vector_size; i += 4 ) {
     float A = searched_array[i];
     float B = column_array[i];
@@ -252,16 +285,43 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
     similarity += (A*B);
     dividerA += (A*A);
     dividerB += (B*B);
+    
     A = searched_array[i+2];
     B = column_array[i+2];
     similarity += (A*B);
     dividerA += (A*A);
     dividerB += (B*B);
-     A = searched_array[i+3];
+    
+    A = searched_array[i+3];
     B = column_array[i+3];
     similarity += (A*B);
     dividerA += (A*A);
     dividerB += (B*B);
+/**
+    A = searched_array[i+4];
+    B = column_array[i+4];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+
+    A = searched_array[i+5];
+    B = column_array[i+5];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+
+    A = searched_array[i+6];
+    B = column_array[i+6];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+
+    A = searched_array[i+7];
+    B = column_array[i+7];
+    similarity += (A*B);
+    dividerA += (A*A);
+    dividerB += (B*B);
+    /**/
   }
   //#pragma GCC ivdep
   /**/
@@ -685,6 +745,70 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
 
 
 //-----------------------------------------------------------------------------------
+// Grouping tests.
+//-----------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------------
+// Name: ndvss_downsample_d
+// Desc: Downsamples a given vector of doubles to a given number of elements.
+// Args: Double array BLOB,
+//       Number of dimensions INTEGER, 
+//       Downsampled number of dimensions INTEGER
+// Returns: Downsampled array BLOB
+//----------------------------------------------------------------------------------------
+static void ndvss_downsample_d( sqlite3_context* context,
+                                            int argc,
+                                            sqlite3_value** argv ) 
+{
+  if( argc < 3 ) {
+    // Not enough arguments.
+    sqlite3_result_error(context, "3 arguments needs to be given: an array, array length.", -1);
+    return;
+  }
+  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
+    // Missing one of the required arguments.
+    sqlite3_result_error(context, "One of the given arguments is null.", -1);
+    return;
+  }
+
+  int vector_size = sqlite3_value_int(argv[1]);
+  int downsampled_vector_size = sqlite3_value_int(argv[2]);
+  if( downsampled_vector_size <= 0 ) {
+    sqlite3_result_error(context, "Downsampled vector size must be > 0.", -1);
+  }
+
+  const double* array = (const double *)sqlite3_value_blob(argv[0]);
+  int new_array_size = sizeof(double)*downsampled_vector_size;
+  double* new_array = (double *)sqlite3_malloc(new_array_size);
+  if( new_array == 0 ) {
+    sqlite3_result_error(context, "Out of memory when allocating the downsampled array.", -1);
+    return;
+  }
+  //#pragma GCC ivdep
+  int i = 0;
+  int d = 0;
+  int count = 0;
+  int segment_size = vector_size / downsampled_vector_size;
+  double interpolated_value = 0.0;
+  for( ; i < vector_size; ++i ) {
+    interpolated_value += array[i];
+    ++count;
+    if( count == segment_size ) {
+      interpolated_value = interpolated_value / (double)segment_size;
+      new_array[d] = interpolated_value;
+      ++d;
+      count = 0;
+      interpolated_value = 0.0;
+    }
+  }
+  
+  sqlite3_result_blob(context, new_array, new_array_size, sqlite3_free );
+}
+
+
+//-----------------------------------------------------------------------------------
 // ENTRYPOINT.
 //-----------------------------------------------------------------------------------
 #ifdef _WIN32
@@ -850,6 +974,20 @@ int sqlite3_ndvss_init( sqlite3 *db,
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_dot_product_similarity_str, // xFunc -> Function pointer 
+                                0, // xStep?
+                                0  // xFinal?
+                                );
+  if (rc != SQLITE_OK) {
+      *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+      return rc;
+  }
+
+    rc = sqlite3_create_function( db, 
+                                "ndvss_downsample_d", // Function name 
+                                3, // Number of arguments
+                                SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                0, // *pApp?
+                                ndvss_downsample_d, // xFunc -> Function pointer 
                                 0, // xStep?
                                 0  // xFinal?
                                 );
