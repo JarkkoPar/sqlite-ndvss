@@ -20,7 +20,7 @@ On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD)
 |--|--|--|
 |Cosine|DOUBLE|1.56|
 |Cosine|FLOAT|1.44|
-|Euclidean distance|DOUBLE|1.99|
+|Euclidean distance|DOUBLE|1.19|
 |Euclidean distance|FLOAT|1.09|
 |Euclidean distance squared|DOUBLE|1.19|
 |Euclidean distance squared|FLOAT|1.10|
