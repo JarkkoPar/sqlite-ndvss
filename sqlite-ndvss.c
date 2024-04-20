@@ -168,10 +168,20 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
   for( ; i + 3 < vector_size; i += 4 ) {
     A = _mm256_loadu_pd(&searched_array[i]);
     B = _mm256_loadu_pd(&column_array[i]);
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     mmdividerA = _mm256_fmadd_pd(A, A, mmdividerA);
     mmdividerB = _mm256_fmadd_pd(B, B, mmdividerB);
     mmsimilarity = _mm256_fmadd_pd(A, B, mmsimilarity);
-    
+    #else
+    // No Fused multiply-add support (AVX).
+    AA = _mm256_mul_pd(A, A);
+    BB = _mm256_mul_pd(B, B);
+    AB = _mm256_mul_pd(A, B);
+    mmdividerA = _mm256_add_pd(AA, mmdividerA);
+    mmdividerB = _mm256_add_pd(BB, mmdividerB);
+    mmsimilarity = _mm256_add_pd(AB, mmsimilarity);    
+    #endif
   }
   // The following is based on code from stack overflow. 
   // https://stackoverflow.com/questions/49941645/get-sum-of-values-stored-in-m256d-with-sse-avx/49943540#49943540
@@ -280,9 +290,20 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   for( ; i + 7 < vector_size; i += 8 ) {
     A = _mm256_loadu_ps(&searched_array[i]);
     B = _mm256_loadu_ps(&column_array[i]);
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     mmdividerA = _mm256_fmadd_ps(A, A, mmdividerA);
     mmdividerB = _mm256_fmadd_ps(B, B, mmdividerB);
     mmsimilarity = _mm256_fmadd_ps(A, B, mmsimilarity);
+    #else
+    // No Fused multiply-add support (AVX).
+    AA = _mm256_mul_ps(A, A);
+    BB = _mm256_mul_ps(B, B);
+    AB = _mm256_mul_ps(A, B);
+    mmdividerA = _mm256_add_ps(AA, mmdividerA);
+    mmdividerB = _mm256_add_ps(BB, mmdividerB);
+    mmsimilarity = _mm256_add_ps(AB, mmsimilarity);    
+    #endif
   }
   
   __m128 vlow   = _mm256_castps256_ps128(mmdividerA);
@@ -421,12 +442,19 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
   
   int i = 0;
   #ifdef USE_AVX
-  __m256d A, B, AB, sumAB = _mm256_setzero_pd();
+  __m256d A, B, AB, ABAB, sumAB = _mm256_setzero_pd();
   for( ; i + 3 < vector_size; i += 4 ) {
     A = _mm256_loadu_pd(&searched_array[i]);
     B = _mm256_loadu_pd(&column_array[i]);
     AB = _mm256_sub_pd( A, B );
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     sumAB = _mm256_fmadd_pd(AB, AB, sumAB );
+    #else
+    // No Fused multiply-add support (AVX).
+    AB = _mm256_mul_pd(AB, AB);
+    sumAB = _mm256_add_pd(ABAB, sumAB );    
+    #endif
   }
   __m128d vlow  = _mm256_castpd256_pd128(sumAB);
   __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
@@ -494,12 +522,19 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
   
   int i = 0; 
   #ifdef USE_AVX
-  __m256 A, B, AB, sumAB = _mm256_setzero_ps();
+  __m256 A, B, AB, ABAB, sumAB = _mm256_setzero_ps();
   for( ; i + 7 < vector_size; i += 8 ) {
     A = _mm256_loadu_ps(&searched_array[i]);
     B = _mm256_loadu_ps(&column_array[i]);
     AB = _mm256_sub_ps( A, B );
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     sumAB = _mm256_fmadd_ps(AB, AB, sumAB );
+    #else
+    // No fused multiply-add support (AVX).
+    ABAB = _mm256_mul_ps(AB, AB);
+    sumAB = _mm256_add_ps(ABAB, sumAB);
+    #endif
   }
   __m128 vlow   = _mm256_castps256_ps128(sumAB);
   __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
@@ -570,12 +605,19 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
   //#pragma GCC ivdep
   int i = 0;
   #ifdef USE_AVX
-  __m256d A, B, AB, sumAB = _mm256_setzero_pd();
+  __m256d A, B, AB, ABAB, sumAB = _mm256_setzero_pd();
   for( ; i + 3 < vector_size; i += 4 ) {
     A = _mm256_loadu_pd(&searched_array[i]);
     B = _mm256_loadu_pd(&column_array[i]);
     AB = _mm256_sub_pd( A, B );
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     sumAB = _mm256_fmadd_pd(AB, AB, sumAB );
+    #else 
+    // No fused multiply-add support (AVX).
+    ABAB = _mm256_mul_pd(AB, AB);
+    sumAB = _mm256_add_pd(ABAB, sumAB);
+    #endif
   }
   __m128d vlow  = _mm256_castpd256_pd128(sumAB);
   __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
@@ -643,12 +685,19 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
   //#pragma GCC ivdep
   int i = 0; 
   #ifdef USE_AVX
-  __m256 A, B, AB, sumAB = _mm256_setzero_ps();
+  __m256 A, B, AB, ABAB, sumAB = _mm256_setzero_ps();
   for( ; i + 7 < vector_size; i += 8 ) {
     A = _mm256_loadu_ps(&searched_array[i]);
     B = _mm256_loadu_ps(&column_array[i]);
     AB = _mm256_sub_ps( A, B );
+    #ifdef __AVX2__
+    // Fused multiply-add supported (AVX2).
     sumAB = _mm256_fmadd_ps(AB, AB, sumAB );
+    #else 
+    // No fused multiply-add support (AVX).
+    ABAB = _mm256_mul_ps(AB, AB);
+    sumAB = _mm256_add_ps(ABAB, sumAB);
+    #endif
   }
   __m128 vlow   = _mm256_castps256_ps128(sumAB);
   __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
@@ -720,7 +769,12 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
   for( ; i + 3 < vector_size; i += 4 ) {
     A = _mm256_loadu_pd(&searched_array[i]);
     B = _mm256_loadu_pd(&column_array[i]);
+    #ifdef __AVX2__
     sumAB = _mm256_fmadd_pd(A, B, sumAB );
+    #else 
+    AB = _mm256_mul_pd(A, B);
+    sumAB = _mm256_add_pd(AB, sumAB);
+    #endif
   }
   __m128d vlow  = _mm256_castpd256_pd128(sumAB);
   __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
@@ -787,7 +841,12 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
   for( ; i + 7 < vector_size; i += 8 ) {
     A = _mm256_loadu_ps(&searched_array[i]);
     B = _mm256_loadu_ps(&column_array[i]);
+    #ifdef __AVX2__
     sumAB = _mm256_fmadd_ps(A, B, sumAB );
+    #else 
+    AB = _mm256_mul_ps(A, B);
+    sumAB = _mm256_add_ps(AB, sumAB);
+    #endif
   }
   __m128 vlow   = _mm256_castps256_ps128(sumAB);
   __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
@@ -889,70 +948,6 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
     ++i;  
   }//endwhile processing searched string
   sqlite3_result_double(context, similarity);
-}
-
-
-//-----------------------------------------------------------------------------------
-// Grouping tests.
-//-----------------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------------------
-// Name: ndvss_downsample_d
-// Desc: Downsamples a given vector of doubles to a given number of elements.
-// Args: Double array BLOB,
-//       Number of dimensions INTEGER, 
-//       Downsampled number of dimensions INTEGER
-// Returns: Downsampled array BLOB
-//----------------------------------------------------------------------------------------
-static void ndvss_downsample_d( sqlite3_context* context,
-                                            int argc,
-                                            sqlite3_value** argv ) 
-{
-  if( argc < 3 ) {
-    // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: an array, array length.", -1);
-    return;
-  }
-  if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
-    // Missing one of the required arguments.
-    sqlite3_result_error(context, "One of the given arguments is null.", -1);
-    return;
-  }
-
-  int vector_size = sqlite3_value_int(argv[1]);
-  int downsampled_vector_size = sqlite3_value_int(argv[2]);
-  if( downsampled_vector_size <= 0 ) {
-    sqlite3_result_error(context, "Downsampled vector size must be > 0.", -1);
-  }
-
-  const double* array = (const double *)sqlite3_value_blob(argv[0]);
-  int new_array_size = sizeof(double)*downsampled_vector_size;
-  double* new_array = (double *)sqlite3_malloc(new_array_size);
-  if( new_array == 0 ) {
-    sqlite3_result_error(context, "Out of memory when allocating the downsampled array.", -1);
-    return;
-  }
-  //#pragma GCC ivdep
-  int i = 0;
-  int d = 0;
-  int count = 0;
-  int segment_size = vector_size / downsampled_vector_size;
-  double interpolated_value = 0.0;
-  for( ; i < vector_size; ++i ) {
-    interpolated_value += array[i];
-    ++count;
-    if( count == segment_size ) {
-      interpolated_value = interpolated_value / (double)segment_size;
-      new_array[d] = interpolated_value;
-      ++d;
-      count = 0;
-      interpolated_value = 0.0;
-    }
-  }
-  
-  sqlite3_result_blob(context, new_array, new_array_size, sqlite3_free );
 }
 
 
@@ -1122,20 +1117,6 @@ int sqlite3_ndvss_init( sqlite3 *db,
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_dot_product_similarity_str, // xFunc -> Function pointer 
-                                0, // xStep?
-                                0  // xFinal?
-                                );
-  if (rc != SQLITE_OK) {
-      *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
-      return rc;
-  }
-
-    rc = sqlite3_create_function( db, 
-                                "ndvss_downsample_d", // Function name 
-                                3, // Number of arguments
-                                SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
-                                0, // *pApp?
-                                ndvss_downsample_d, // xFunc -> Function pointer 
                                 0, // xStep?
                                 0  // xFinal?
                                 );
