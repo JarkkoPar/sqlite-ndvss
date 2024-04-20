@@ -6,7 +6,7 @@
 SQLITE_EXTENSION_INIT1
 #include <stdlib.h>
 #include <math.h>
-//#define USE_AVX 1 // Comment this out if you don't want to use AVX extensions.
+#define USE_AVX 1 // Comment this out if you don't want to use AVX extensions.
 #ifdef USE_AVX
 #include <immintrin.h>
 #endif
@@ -164,31 +164,37 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
   double dividerB = 0.0;
   int i = 0;
   #ifdef USE_AVX
-  __m256d A, B, AA, BB, AB, mmdividerA, mmdividerB, mmsimilarity;
+  __m256d A, B, AA, BB, AB, mmdividerA = _mm256_setzero_pd(), mmdividerB = _mm256_setzero_pd(), mmsimilarity = _mm256_setzero_pd();
   for( ; i + 3 < vector_size; i += 4 ) {
-    //A = _mm256_load_pd(searched_array + i);
-    //B = _mm256_load_pd(column_array + i);
-    A = _mm256_set_pd( searched_array[i], searched_array[i+1], searched_array[i+2], searched_array[i+3]);
-    B = _mm256_set_pd( column_array[i], column_array[i+1], column_array[i+2], column_array[i+3]);
-    AA = _mm256_mul_pd(A, A);
-    BB = _mm256_mul_pd(B, B);
-    AB = _mm256_mul_pd(A, B);
-
-    double* result = (double *)&AB;
-    similarity += result[0] + result[1] + result[2] + result[3];
-    result = (double *)&AA;
-    dividerA += result[0] + result[1] + result[2] + result[3];
-    result = (double *)&BB;
-    dividerB += result[0] + result[1] + result[2] + result[3];
+    A = _mm256_loadu_pd(&searched_array[i]);
+    B = _mm256_loadu_pd(&column_array[i]);
+    mmdividerA = _mm256_fmadd_pd(A, A, mmdividerA);
+    mmdividerB = _mm256_fmadd_pd(B, B, mmdividerB);
+    mmsimilarity = _mm256_fmadd_pd(A, B, mmsimilarity);
+    
   }
-  for(; i < vector_size; ++i ) {
-    double Ax = searched_array[i];
-    double Bx = column_array[i];
-    similarity += (Ax*Bx);
-    dividerA += (Ax*Ax);
-    dividerB += (Bx*Bx);
+  // The following is based on code from stack overflow. 
+  // https://stackoverflow.com/questions/49941645/get-sum-of-values-stored-in-m256d-with-sse-avx/49943540#49943540
+  __m128d vlow  = _mm256_castpd256_pd128(mmdividerA);
+  __m128d vhigh = _mm256_extractf128_pd(mmdividerA, 1); 
+          vlow  = _mm_add_pd(vlow, vhigh);     
 
-  }
+  __m128d high64 = _mm_unpackhi_pd(vlow, vlow);
+  dividerA = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
+
+  vlow  = _mm256_castpd256_pd128(mmdividerB);
+  vhigh = _mm256_extractf128_pd(mmdividerB, 1); 
+  vlow  = _mm_add_pd(vlow, vhigh);     
+
+  high64 = _mm_unpackhi_pd(vlow, vlow);
+  dividerB = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
+
+  vlow  = _mm256_castpd256_pd128(mmsimilarity);
+  vhigh = _mm256_extractf128_pd(mmsimilarity, 1); 
+  vlow  = _mm_add_pd(vlow, vhigh);     
+
+  high64 = _mm_unpackhi_pd(vlow, vlow);
+  similarity = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
   #else
   // Non-AVX implementation.
   for( ; i + 3 < vector_size; i += 4 ) {
@@ -214,16 +220,16 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
     dividerA += (A*A);
     dividerB += (B*B);
   }
-  //#pragma GCC ivdep
-  for(; i < vector_size; ++i ) {
-    double A = searched_array[i];
-    double B = column_array[i];
-    similarity += (A*B);
-    dividerA += (A*A);
-    dividerB += (B*B);
-
-  }
   #endif
+  
+  for(; i < vector_size; ++i ) {
+    double Ax = searched_array[i];
+    double Bx = column_array[i];
+    similarity += (Ax*Bx);
+    dividerA += (Ax*Ax);
+    dividerB += (Bx*Bx);
+  }
+
   if( dividerA == 0.0 || dividerB == 0.0 ) {
     sqlite3_result_error(context, "Division by zero.", -1);
     return;
@@ -268,8 +274,44 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
   float similarity = 0.0f;
   float dividerA = 0.0f;
   float dividerB = 0.0f;
-  
   int i = 0;
+  #ifdef USE_AVX
+  __m256 A, B, AA, BB, AB, mmdividerA = _mm256_setzero_ps(), mmdividerB = _mm256_setzero_ps(), mmsimilarity = _mm256_setzero_ps();
+  for( ; i + 7 < vector_size; i += 8 ) {
+    A = _mm256_loadu_ps(&searched_array[i]);
+    B = _mm256_loadu_ps(&column_array[i]);
+    mmdividerA = _mm256_fmadd_ps(A, A, mmdividerA);
+    mmdividerB = _mm256_fmadd_ps(B, B, mmdividerB);
+    mmsimilarity = _mm256_fmadd_ps(A, B, mmsimilarity);
+  }
+  
+  __m128 vlow   = _mm256_castps256_ps128(mmdividerA);
+  __m128 vhigh  = _mm256_extractf128_ps(mmdividerA, 1);
+         vlow   = _mm_add_ps(vlow, vhigh);
+  __m128 high64 = _mm_movehl_ps( vlow, vlow );
+  __m128 sum    = _mm_add_ps(vlow, high64);
+         sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  dividerA = _mm_cvtss_f32(sum); 
+
+  vlow   = _mm256_castps256_ps128(mmdividerB);
+  vhigh  = _mm256_extractf128_ps(mmdividerB, 1);
+  vlow   = _mm_add_ps(vlow, vhigh);
+  high64 = _mm_movehl_ps( vlow, vlow );
+  sum    = _mm_add_ps(vlow, high64);
+  sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  dividerB = _mm_cvtss_f32(sum); 
+
+  vlow   = _mm256_castps256_ps128(mmsimilarity);
+  vhigh  = _mm256_extractf128_ps(mmsimilarity, 1);
+  vlow   = _mm_add_ps(vlow, vhigh);
+  high64 = _mm_movehl_ps( vlow, vlow );
+  sum    = _mm_add_ps(vlow, high64);
+  sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  similarity = _mm_cvtss_f32(sum); 
+
+
+
+  #else
   //#pragma GCC ivdep
   /**/ // 
   //for( ; i + 7 < vector_size; i += 8 ) {
@@ -324,6 +366,7 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
     /**/
   }
   //#pragma GCC ivdep
+  #endif
   /**/
   for(; i < vector_size; ++i ) {
     float A = searched_array[i];
@@ -377,6 +420,23 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
   double similarity = 0.0;
   
   int i = 0;
+  #ifdef USE_AVX
+  __m256d A, B, AB, sumAB = _mm256_setzero_pd();
+  for( ; i + 3 < vector_size; i += 4 ) {
+    A = _mm256_loadu_pd(&searched_array[i]);
+    B = _mm256_loadu_pd(&column_array[i]);
+    AB = _mm256_sub_pd( A, B );
+    sumAB = _mm256_fmadd_pd(AB, AB, sumAB );
+  }
+  __m128d vlow  = _mm256_castpd256_pd128(sumAB);
+  __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
+          vlow  = _mm_add_pd(vlow, vhigh);     
+
+  __m128d high64 = _mm_unpackhi_pd(vlow, vlow);
+  similarity = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
+
+  #else
+
   for( ; i + 3 < vector_size; i += 4 ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -387,6 +447,7 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
     AB = (searched_array[i+3] - column_array[i+3]);
     similarity += (AB * AB);
   }
+  #endif 
   for( ; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -432,6 +493,24 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
   float similarity = 0.0f;
   
   int i = 0; 
+  #ifdef USE_AVX
+  __m256 A, B, AB, sumAB = _mm256_setzero_ps();
+  for( ; i + 7 < vector_size; i += 8 ) {
+    A = _mm256_loadu_ps(&searched_array[i]);
+    B = _mm256_loadu_ps(&column_array[i]);
+    AB = _mm256_sub_ps( A, B );
+    sumAB = _mm256_fmadd_ps(AB, AB, sumAB );
+  }
+  __m128 vlow   = _mm256_castps256_ps128(sumAB);
+  __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
+         vlow   = _mm_add_ps(vlow, vhigh);
+  __m128 high64 = _mm_movehl_ps( vlow, vlow );
+  __m128 sum    = _mm_add_ps(vlow, high64);
+         sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  similarity = _mm_cvtss_f32(sum);
+
+  #else 
+
   for( ; i + 3 < vector_size; i += 4 ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -442,6 +521,7 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
     AB = (searched_array[i+3] - column_array[i+3]);
     similarity += (AB * AB);
   }
+  #endif
   for( ; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -489,6 +569,22 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
   
   //#pragma GCC ivdep
   int i = 0;
+  #ifdef USE_AVX
+  __m256d A, B, AB, sumAB = _mm256_setzero_pd();
+  for( ; i + 3 < vector_size; i += 4 ) {
+    A = _mm256_loadu_pd(&searched_array[i]);
+    B = _mm256_loadu_pd(&column_array[i]);
+    AB = _mm256_sub_pd( A, B );
+    sumAB = _mm256_fmadd_pd(AB, AB, sumAB );
+  }
+  __m128d vlow  = _mm256_castpd256_pd128(sumAB);
+  __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
+          vlow  = _mm_add_pd(vlow, vhigh);     
+
+  __m128d high64 = _mm_unpackhi_pd(vlow, vlow);
+  similarity = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
+
+  #else
   for( ; i + 3 < vector_size; i += 4 ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -499,6 +595,7 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
     AB = (searched_array[i+3] - column_array[i+3]);
     similarity += (AB * AB);
   }
+  #endif
   for( ; i < vector_size; ++i ) {
     double AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -545,6 +642,23 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
   
   //#pragma GCC ivdep
   int i = 0; 
+  #ifdef USE_AVX
+  __m256 A, B, AB, sumAB = _mm256_setzero_ps();
+  for( ; i + 7 < vector_size; i += 8 ) {
+    A = _mm256_loadu_ps(&searched_array[i]);
+    B = _mm256_loadu_ps(&column_array[i]);
+    AB = _mm256_sub_ps( A, B );
+    sumAB = _mm256_fmadd_ps(AB, AB, sumAB );
+  }
+  __m128 vlow   = _mm256_castps256_ps128(sumAB);
+  __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
+         vlow   = _mm_add_ps(vlow, vhigh);
+  __m128 high64 = _mm_movehl_ps( vlow, vlow );
+  __m128 sum    = _mm_add_ps(vlow, high64);
+         sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  similarity = _mm_cvtss_f32(sum);
+
+  #else 
   for( ; i + 3 < vector_size; i += 4 ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -555,6 +669,7 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
     AB = (searched_array[i+3] - column_array[i+3]);
     similarity += (AB * AB);
   }
+  #endif
   for( ; i < vector_size; ++i ) {
     float AB = (searched_array[i] - column_array[i]);
     similarity += (AB * AB);
@@ -600,12 +715,28 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
   
   //#pragma GCC ivdep
   int i = 0;
+  #ifdef USE_AVX
+  __m256d A, B, AB, sumAB = _mm256_setzero_pd();
+  for( ; i + 3 < vector_size; i += 4 ) {
+    A = _mm256_loadu_pd(&searched_array[i]);
+    B = _mm256_loadu_pd(&column_array[i]);
+    sumAB = _mm256_fmadd_pd(A, B, sumAB );
+  }
+  __m128d vlow  = _mm256_castpd256_pd128(sumAB);
+  __m128d vhigh = _mm256_extractf128_pd(sumAB, 1); 
+          vlow  = _mm_add_pd(vlow, vhigh);     
+
+  __m128d high64 = _mm_unpackhi_pd(vlow, vlow);
+  similarity = _mm_cvtsd_f64(_mm_add_sd(vlow, high64)); 
+
+  #else
   for( ; i + 3 < vector_size; i += 4 ) {
     similarity += ((searched_array[i]) * (column_array[i]));
     similarity += ((searched_array[i+1]) * (column_array[i+1]));
     similarity += ((searched_array[i+2]) * (column_array[i+2]));
     similarity += ((searched_array[i+3]) * (column_array[i+3]));
   }
+  #endif
   for( ; i < vector_size; ++i ) {
     similarity += ((searched_array[i]) * (column_array[i]));
   }
@@ -651,12 +782,29 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
   
   //#pragma GCC ivdep
   int i = 0;
+  #ifdef USE_AVX
+  __m256 A, B, AB, sumAB = _mm256_setzero_ps();
+  for( ; i + 7 < vector_size; i += 8 ) {
+    A = _mm256_loadu_ps(&searched_array[i]);
+    B = _mm256_loadu_ps(&column_array[i]);
+    sumAB = _mm256_fmadd_ps(A, B, sumAB );
+  }
+  __m128 vlow   = _mm256_castps256_ps128(sumAB);
+  __m128 vhigh  = _mm256_extractf128_ps(sumAB, 1);
+         vlow   = _mm_add_ps(vlow, vhigh);
+  __m128 high64 = _mm_movehl_ps( vlow, vlow );
+  __m128 sum    = _mm_add_ps(vlow, high64);
+         sum    = _mm_add_ss(sum, _mm_shuffle_ps( sum, sum, 0x55));
+  similarity = _mm_cvtss_f32(sum);
+
+  #else 
   for( ; i + 3 < vector_size; i += 4 ) {
     similarity += ((searched_array[i]) * (column_array[i]));
     similarity += ((searched_array[i+1]) * (column_array[i+1]));
     similarity += ((searched_array[i+2]) * (column_array[i+2]));
     similarity += ((searched_array[i+3]) * (column_array[i+3]));
   }
+  #endif
   for( ; i < vector_size; ++i ) {
     similarity += ((searched_array[i]) * (column_array[i]));
   }
