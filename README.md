@@ -13,22 +13,22 @@ You can find example SQL queries [here](examples/examples.md).
 
 The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is a static loop unrolling, which speeds up the for-loops in the similarity functions.
 
-On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
+On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, does not support AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
 
 
 |Similarity function|DOUBLE/FLOAT|Runtime (s)|
 |--|--|--|
-|Cosine|DOUBLE|1.56|
-|Cosine|FLOAT|1.44|
-|Euclidean distance|DOUBLE|1.19|
-|Euclidean distance|FLOAT|1.09|
-|Euclidean distance squared|DOUBLE|1.19|
-|Euclidean distance squared|FLOAT|1.10|
-|Dot product|DOUBLE|1.19|
-|Dot product|FLOAT|1.09|
+|Cosine|DOUBLE|0.46|
+|Cosine|FLOAT|0.31|
+|Euclidean distance|DOUBLE|0.45|
+|Euclidean distance|FLOAT|0.30|
+|Euclidean distance squared|DOUBLE|0.44|
+|Euclidean distance squared|FLOAT|0.30|
+|Dot product|DOUBLE|0.44|
+|Dot product|FLOAT|0.29|
 
 
-The tests were done by loading the database into a `:memory:` database and timing the duration to run a SELECT statement that calculates the similarity for a random 1536 vector, ordering by the similarity score: `SELECT ID, ndvss_cosine_similarity_d( ndvss_convert_str_to_array_d('" + vector + "', 1536), EMBEDDING, 1536) FROM embeddings_d ORDER BY 2` for doubles and similarly with a table containing floats. If you run your query in a database on disk the speed of your SDD/HDD will cause differences in the results. On the afore mentioned Asus, running from the SSD causes the Cosine similarity query to run in about 2.2 seconds. 
+The tests were done by loading the database into a `:memory:` database and timing the duration to run a SELECT statement that calculates the similarity for a random 1536 vector, ordering by the similarity score: `SELECT ID, ndvss_cosine_similarity_d( ndvss_convert_str_to_array_d('" + vector + "', 1536), EMBEDDING, 1536) FROM embeddings_d ORDER BY 2` for doubles and similarly with a table containing floats. If you run your query in a database on disk the speed of your SSD/HDD will cause differences in the results. On the afore mentioned Asus, running from the SSD causes the Cosine similarity query (double) to run in about 1.12 seconds. 
 
 Modern hardware gets of course much better results.
 
@@ -45,11 +45,22 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 3. Open terminal/command prompt and change to the directory where you have the source code files.
 4. Compile using the platform-specific command below:
 
-**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll`. 
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx -mfma -Ofast -ffast-math`. 
 
-**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so`
+**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx -mfma -Ofast -ffast-math`
 
 **Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib`
+
+
+**Note** If you are running a pre-2013 machine that does not have AVX2 support, use the following compile options:
+
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx -mfma -Ofast -ffast-math`. 
+
+**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx -mfma -Ofast -ffast-math`
+
+**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib`
+
+
 
 ## Loading the extension
 

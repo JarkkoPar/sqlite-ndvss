@@ -452,7 +452,7 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
     sumAB = _mm256_fmadd_pd(AB, AB, sumAB );
     #else
     // No Fused multiply-add support (AVX).
-    AB = _mm256_mul_pd(AB, AB);
+    ABAB = _mm256_mul_pd(AB, AB);
     sumAB = _mm256_add_pd(ABAB, sumAB );    
     #endif
   }
