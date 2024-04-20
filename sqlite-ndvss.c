@@ -12,7 +12,7 @@ SQLITE_EXTENSION_INIT1
 #endif
 
 
-#define NDVSS_VERSION_DOUBLE  0.3
+#define NDVSS_VERSION_DOUBLE  0.4
 
 
 //----------------------------------------------------------------------------------------
