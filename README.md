@@ -11,9 +11,9 @@ You can find example SQL queries [here](examples/examples.md).
 
 ## What kind of performance can I expect?
 
-The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is a static loop unrolling, which speeds up the for-loops in the similarity functions.
+The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of AVX/AVX2 if that is available, and an option to compile with just static loop unrolling, which speeds up the for-loops in the similarity functions.
 
-On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, does not support AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
+On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, supports AVX but not AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
 
 
 |Similarity function|DOUBLE/FLOAT|Runtime (s)|
