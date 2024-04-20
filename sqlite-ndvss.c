@@ -12,7 +12,7 @@ SQLITE_EXTENSION_INIT1
 #endif
 
 
-#define NDVSS_VERSION_DOUBLE  0.4
+#define NDVSS_VERSION_DOUBLE  0.45
 
 
 //----------------------------------------------------------------------------------------
@@ -141,22 +141,31 @@ static void ndvss_cosine_similarity_d( sqlite3_context* context,
                                        int argc,
                                        sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+  if( argc < 2 ) {
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array. Optionally the vector size can be given as the 3rd argument.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
-
-  int vector_size = sqlite3_value_int(argv[2]);
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(double);
+  }
+  
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
@@ -263,22 +272,31 @@ static void ndvss_cosine_similarity_f( sqlite3_context* context,
                                        int argc,
                                        sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+  if( argc < 2 ) {
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally the array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
-    sqlite3_result_error(context, "One of the given arguments is null.", -1);
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
+    sqlite3_result_error(context, "One of the required arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(float);
+  }
 
-  int vector_size = sqlite3_value_int(argv[2]);
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
@@ -420,22 +438,32 @@ static void ndvss_euclidean_distance_similarity_d( sqlite3_context* context,
                                                    int argc,
                                                    sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+  if( argc < 2 ) {
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally the array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
-    sqlite3_result_error(context, "One of the given arguments is null.", -1);
-    return;
-  }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    sqlite3_result_error(context, "The arrays are not the same length.", -1);
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
+    sqlite3_result_error(context, "One of the required arguments is null.", -1);
     return;
   }
 
-  int vector_size = sqlite3_value_int(argv[2]);
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
+    sqlite3_result_error(context, "The arrays are not the same length.", -1);
+    return;
+  }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(double);
+  }
+
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
@@ -497,25 +525,33 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
                                                    int argc,
                                                    sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
+  if( argc < 2 ) {
     // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally the array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(float);
+  }
 
-  int vector_size = sqlite3_value_int(argv[2]);
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
@@ -579,25 +615,33 @@ static void ndvss_euclidean_distance_similarity_squared_d( sqlite3_context* cont
                                                            int argc,
                                                            sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
+  if( argc < 2 ) {
     // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(double);
+  }
 
-  int vector_size = sqlite3_value_int(argv[2]);
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
@@ -659,25 +703,33 @@ static void ndvss_euclidean_distance_similarity_squared_f( sqlite3_context* cont
                                                            int argc,
                                                            sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
+  if( argc < 2 ) {
     // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally the array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(float);
+  }
 
-  int vector_size = sqlite3_value_int(argv[2]);
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
@@ -739,25 +791,33 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
                                             int argc,
                                             sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
+  if( argc < 2 ) {
     // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, optionally the array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is null.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(double);
+  }
 
-  int vector_size = sqlite3_value_int(argv[2]);
   const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
   const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
   double similarity = 0.0;
@@ -811,25 +871,32 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
                                             int argc,
                                             sqlite3_value** argv ) 
 {
-  if( argc < 3 ) {
+  if( argc < 2 ) {
     // Not enough arguments.
-    sqlite3_result_error(context, "3 arguments needs to be given: searched array, column/compared array, array length.", -1);
+    sqlite3_result_error(context, "2 arguments needs to be given: searched array, column/compared array, array length.", -1);
     return;
   }
   if( sqlite3_value_type(argv[0]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[1]) == SQLITE_NULL ||
-      sqlite3_value_type(argv[2]) == SQLITE_NULL ) {
+      sqlite3_value_type(argv[1]) == SQLITE_NULL ) {
     // Missing one of the required arguments.
     sqlite3_result_error(context, "One of the given arguments is NULL.", -1);
     return;
   }
-  if( sqlite3_value_bytes(argv[0]) != sqlite3_value_bytes(argv[1])) {
-    // Mismatching array lengths.
+  int arg1_size_bytes = sqlite3_value_bytes(argv[0]);
+  int arg2_size_bytes = sqlite3_value_bytes(argv[1]);
+  if( arg1_size_bytes != arg2_size_bytes ) {
     sqlite3_result_error(context, "The arrays are not the same length.", -1);
     return;
   }
-
-  int vector_size = sqlite3_value_int(argv[2]);
+  int vector_size = -1;
+  if( argc > 2 ) {
+    if( sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
+      vector_size = sqlite3_value_int(argv[2]);
+    }
+  } 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(float);
+  }
   const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
   const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
   float similarity = 0.0f;
@@ -1006,7 +1073,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_cosine_similarity_d", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_cosine_similarity_d, // xFunc -> Function pointer 
@@ -1019,7 +1086,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_cosine_similarity_f", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_cosine_similarity_f, // xFunc -> Function pointer 
@@ -1032,7 +1099,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_euclidean_distance_similarity_d", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_euclidean_distance_similarity_d, // xFunc -> Function pointer 
@@ -1045,7 +1112,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_euclidean_distance_similarity_squared_d", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_euclidean_distance_similarity_squared_d, // xFunc -> Function pointer 
@@ -1058,7 +1125,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_euclidean_distance_similarity_f", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_euclidean_distance_similarity_f, // xFunc -> Function pointer 
@@ -1071,7 +1138,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   }
   rc = sqlite3_create_function( db, 
                                 "ndvss_euclidean_distance_similarity_squared_f", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_euclidean_distance_similarity_squared_f, // xFunc -> Function pointer 
@@ -1085,7 +1152,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
   
   rc = sqlite3_create_function( db, 
                                 "ndvss_dot_product_similarity_d", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_dot_product_similarity_d, // xFunc -> Function pointer 
@@ -1099,7 +1166,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
 
   rc = sqlite3_create_function( db, 
                                 "ndvss_dot_product_similarity_f", // Function name 
-                                3, // Number of arguments
+                                -1, // Number of arguments
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_dot_product_similarity_f, // xFunc -> Function pointer 
