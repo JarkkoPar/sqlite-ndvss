@@ -45,21 +45,23 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 3. Open terminal/command prompt and change to the directory where you have the source code files.
 4. Compile using the platform-specific command below:
 
-**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx -mfma -Ofast -ffast-math`. 
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx2 -mfma -Ofast -ffast-math` 
 
-**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx -mfma -Ofast -ffast-math`
+**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx2 -mfma -Ofast -ffast-math`
 
-**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib`
+**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib -mavx2 -mfma -Ofast -ffast-math`
 
 
 **Note** If you are running a pre-2013 machine that does not have AVX2 support, use the following compile options:
 
-**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx -mfma -Ofast -ffast-math`. 
+**Windows**:`gcc -g -shared sqlite-ndvss.c -o ndvss.dll -mavx -Ofast -ffast-math`. 
 
-**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx -mfma -Ofast -ffast-math`
+**Linux**:`gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -mavx -Ofast -ffast-math`
 
-**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib`
+**Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib -mavx -Ofast -ffast-math`
 
+
+The default compile options above use the -ffast-math option, which trades some accuracy for some speed. If you want more accuracy, simply compile without the -ffast-math option.
 
 
 ## Loading the extension
