@@ -1,0 +1,1 @@
+gcc -g -fPIC -shared sqlite-ndvss.c -o ndvss.so -O3 -ffast-math
