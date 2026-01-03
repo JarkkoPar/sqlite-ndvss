@@ -5,6 +5,7 @@
  * the various similarity functions.
  */
 #include "similarity_functions_basic.h"
+#include "similarity_functions_sse41.h"
 #include "similarity_functions_avx.h"
 #include "similarity_functions_avx2.h"
 #include "similarity_functions_avx512f.h"
@@ -416,6 +417,8 @@ static void ndvss_dot_product_similarity_d_##NAME( sqlite3_context* context, \
 // Cosine similarity functions.
 GENERATE_COSINE_FUNC_F(basic, cosine_similarity_f_basic)
 
+GENERATE_COSINE_FUNC_F(sse41,  cosine_similarity_f_sse41)
+
 GENERATE_COSINE_FUNC_F(avx,  cosine_similarity_f_avx)
 
 GENERATE_COSINE_FUNC_F(avx2,  cosine_similarity_f_avx2)
@@ -423,6 +426,8 @@ GENERATE_COSINE_FUNC_F(avx2,  cosine_similarity_f_avx2)
 GENERATE_COSINE_FUNC_F(avx512f,  cosine_similarity_f_avx512f)
 
 GENERATE_COSINE_FUNC_D(basic, cosine_similarity_d_basic)
+
+GENERATE_COSINE_FUNC_D(sse41,  cosine_similarity_d_sse41)
 
 GENERATE_COSINE_FUNC_D(avx,  cosine_similarity_d_avx)
 
@@ -433,6 +438,8 @@ GENERATE_COSINE_FUNC_D(avx512f,  cosine_similarity_d_avx512f)
 // Euclidean distance similarity functions. 
 GENERATE_EUCLIDEAN_FUNC_F(basic, euclidean_distance_similarity_f_basic)
 
+GENERATE_EUCLIDEAN_FUNC_F(sse41,  euclidean_distance_similarity_f_sse41)
+
 GENERATE_EUCLIDEAN_FUNC_F(avx,  euclidean_distance_similarity_f_avx)
 
 GENERATE_EUCLIDEAN_FUNC_F(avx2,  euclidean_distance_similarity_f_avx2)
@@ -440,6 +447,8 @@ GENERATE_EUCLIDEAN_FUNC_F(avx2,  euclidean_distance_similarity_f_avx2)
 GENERATE_EUCLIDEAN_FUNC_F(avx512f,  euclidean_distance_similarity_f_avx512f)
 
 GENERATE_EUCLIDEAN_FUNC_D(basic, euclidean_distance_similarity_d_basic)
+
+GENERATE_EUCLIDEAN_FUNC_D(sse41,  euclidean_distance_similarity_d_sse41)
 
 GENERATE_EUCLIDEAN_FUNC_D(avx,  euclidean_distance_similarity_d_avx)
 
@@ -450,6 +459,8 @@ GENERATE_EUCLIDEAN_FUNC_D(avx512f,  euclidean_distance_similarity_d_avx512f)
 // Euclidean distance squared similarity functions. 
 GENERATE_EUCLIDEAN_SQUARED_FUNC_F(basic, euclidean_distance_similarity_f_basic)
 
+GENERATE_EUCLIDEAN_SQUARED_FUNC_F(sse41,  euclidean_distance_similarity_f_sse41)
+
 GENERATE_EUCLIDEAN_SQUARED_FUNC_F(avx,  euclidean_distance_similarity_f_avx)
 
 GENERATE_EUCLIDEAN_SQUARED_FUNC_F(avx2,  euclidean_distance_similarity_f_avx2)
@@ -457,6 +468,8 @@ GENERATE_EUCLIDEAN_SQUARED_FUNC_F(avx2,  euclidean_distance_similarity_f_avx2)
 GENERATE_EUCLIDEAN_SQUARED_FUNC_F(avx512f,  euclidean_distance_similarity_f_avx512f)
 
 GENERATE_EUCLIDEAN_SQUARED_FUNC_D(basic, euclidean_distance_similarity_d_basic)
+
+GENERATE_EUCLIDEAN_SQUARED_FUNC_D(sse41,  euclidean_distance_similarity_d_sse41)
 
 GENERATE_EUCLIDEAN_SQUARED_FUNC_D(avx,  euclidean_distance_similarity_d_avx)
 
@@ -467,6 +480,8 @@ GENERATE_EUCLIDEAN_SQUARED_FUNC_D(avx512f,  euclidean_distance_similarity_d_avx5
 // Dot product similarity functions. 
 GENERATE_DOT_PRODUCT_FUNC_F(basic, dot_product_similarity_f_basic)
 
+GENERATE_DOT_PRODUCT_FUNC_F(sse41,  dot_product_similarity_f_sse41)
+
 GENERATE_DOT_PRODUCT_FUNC_F(avx,  dot_product_similarity_f_avx)
 
 GENERATE_DOT_PRODUCT_FUNC_F(avx2,  dot_product_similarity_f_avx2)
@@ -474,6 +489,8 @@ GENERATE_DOT_PRODUCT_FUNC_F(avx2,  dot_product_similarity_f_avx2)
 GENERATE_DOT_PRODUCT_FUNC_F(avx512f,  dot_product_similarity_f_avx512f)
 
 GENERATE_DOT_PRODUCT_FUNC_D(basic, dot_product_similarity_d_basic)
+
+GENERATE_DOT_PRODUCT_FUNC_D(sse41,  dot_product_similarity_d_sse41)
 
 GENERATE_DOT_PRODUCT_FUNC_D(avx,  dot_product_similarity_d_avx)
 

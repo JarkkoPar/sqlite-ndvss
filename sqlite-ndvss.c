@@ -12,9 +12,10 @@ SQLITE_EXTENSION_INIT1
 
 #define NDVSS_VERSION_DOUBLE    0.50
 #define INSTRUCTION_SET_BASIC   0
-#define INSTRUCTION_SET_AVX     1
-#define INSTRUCTION_SET_AVX2    2
-#define INSTRUCTION_SET_AVX512F 3
+#define INSTRUCTION_SET_SSE41   1
+#define INSTRUCTION_SET_AVX     2
+#define INSTRUCTION_SET_AVX2    3
+#define INSTRUCTION_SET_AVX512F 4
 
 
 
@@ -236,6 +237,8 @@ int sqlite3_ndvss_init( sqlite3 *db,
         instruction_set = INSTRUCTION_SET_AVX2; // AVX2 is available. 
     }else if( __builtin_cpu_supports("avx")) {
         instruction_set = INSTRUCTION_SET_AVX;  // AVX is available.
+    }else if( __builtin_cpu_supports("sse4.1")) {
+        instruction_set = INSTRUCTION_SET_SSE41;  // SSE 4.1 is available.
     }
 #endif
 
@@ -584,6 +587,120 @@ int sqlite3_ndvss_init( sqlite3 *db,
               *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
               return rc;
           }
+    } else if( instruction_set == INSTRUCTION_SET_SSE41 ) {
+        /* SSE 4.1 versions of the functions. */
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_cosine_similarity_f", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_cosine_similarity_f_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_euclidean_distance_similarity_f", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_euclidean_distance_similarity_f_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_euclidean_distance_similarity_squared_f", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_euclidean_distance_similarity_squared_f_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_dot_product_similarity_f", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_dot_product_similarity_f_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_cosine_similarity_d", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_cosine_similarity_d_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_euclidean_distance_similarity_d", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_euclidean_distance_similarity_d_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_euclidean_distance_similarity_squared_d", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_euclidean_distance_similarity_squared_d_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+        if (rc != SQLITE_OK) {
+            *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+            return rc;
+        }
+
+        rc = sqlite3_create_function( db, 
+                                    "ndvss_dot_product_similarity_d", // Function name 
+                                    -1, // Number of arguments
+                                    SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                    0, // *pApp?
+                                    ndvss_dot_product_similarity_d_sse41, // xFunc -> Function pointer 
+                                    0, // xStep?
+                                    0  // xFinal?
+                                    );
+          if (rc != SQLITE_OK) {
+              *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+              return rc;
+          }
+    
     } else {
         /* BASIC version of the functions. */
         rc = sqlite3_create_function( db, 
