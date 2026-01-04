@@ -19,7 +19,7 @@
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("sse4.1")))
 #endif 
-static float cosine_similarity_f_sse41( 
+float cosine_similarity_f_sse41( 
      const float*   searched_array 
     ,const float*   column_array 
     ,const int      vector_size
@@ -48,7 +48,7 @@ static float cosine_similarity_f_sse41(
         mmdividerA = _mm_add_ps(AA, mmdividerA);
         mmdividerB = _mm_add_ps(BB, mmdividerB);
         mmsimilarity = _mm_add_ps(AB, mmsimilarity);    
-    }//endfor i+8
+    }//endfor i+4
 
     // Divider A
     __m128 shuf = _mm_movehl_ps(mmdividerA, mmdividerA);
@@ -99,7 +99,7 @@ static float cosine_similarity_f_sse41(
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("sse4.1")))
 #endif 
-static double cosine_similarity_d_sse41( 
+double cosine_similarity_d_sse41( 
      const double*   searched_array 
     ,const double*   column_array 
     ,const int       vector_size
@@ -128,7 +128,7 @@ static double cosine_similarity_d_sse41(
         mmdividerA = _mm_add_pd(AA, mmdividerA);
         mmdividerB = _mm_add_pd(BB, mmdividerB);
         mmsimilarity = _mm_add_pd(AB, mmsimilarity);    
-    }//endfor i+4
+    }//endfor i+2
 
     // Divider A
     __m128d high = _mm_unpackhi_pd(mmdividerA, mmdividerA);
@@ -172,15 +172,15 @@ static double cosine_similarity_d_sse41(
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("sse4.1")))
 #endif 
-static float euclidean_distance_similarity_f_sse41( const float* searched_array,
-                                                    const float* column_array,
-                                                    const int    vector_size ) 
+float euclidean_distance_similarity_f_sse41( const float* searched_array
+                                            ,const float* column_array
+                                            ,const int    vector_size ) 
 {
     float similarity = 0.0f;
     int i = 0; 
     // SSE 4.1 can handle 4 at a time. 
     __m128 A, B, AB, ABAB, sumAB = _mm_setzero_ps();
-    for( ; i + 7 < vector_size; i += 8 ) {
+    for( ; i + 3 < vector_size; i += 4 ) {
         A = _mm_loadu_ps(&searched_array[i]);
         B = _mm_loadu_ps(&column_array[i]);
         AB = _mm_sub_ps( A, B );
@@ -218,9 +218,9 @@ static float euclidean_distance_similarity_f_sse41( const float* searched_array,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("sse4.1")))
 #endif 
-static double euclidean_distance_similarity_d_sse41( const double* searched_array,
-                                                     const double* column_array,
-                                                     const int    vector_size ) 
+double euclidean_distance_similarity_d_sse41( const double* searched_array
+                                             ,const double* column_array
+                                             ,const int    vector_size ) 
 {
     double similarity = 0.0;
     int i = 0; 
@@ -241,7 +241,7 @@ static double euclidean_distance_similarity_d_sse41( const double* searched_arra
 
     // Handle the remaining elements.
     for( ; i < vector_size; ++i ) {
-        float AB = (searched_array[i] - column_array[i]);
+        double AB = (searched_array[i] - column_array[i]);
         similarity += (AB * AB);
     }
 
@@ -260,11 +260,11 @@ static double euclidean_distance_similarity_d_sse41( const double* searched_arra
 // Returns: Similarity as a dot product FLOAT
 //----------------------------------------------------------------------------------------
 #if defined(__GNUC__) || defined(__clang__)
-__attribute__((target("avx")))
+__attribute__((target("sse4.1")))
 #endif 
-static float dot_product_similarity_f_sse41( const float* searched_array 
-                                            ,const float* column_array 
-                                            ,const int    vector_size ) 
+float dot_product_similarity_f_sse41( const float* searched_array 
+                                     ,const float* column_array 
+                                     ,const int    vector_size ) 
 {
     float similarity = 0.0f;
     int i = 0;
@@ -304,9 +304,9 @@ static float dot_product_similarity_f_sse41( const float* searched_array
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("sse4.1")))
 #endif 
-static double dot_product_similarity_d_sse41(  const double* searched_array 
-                                              ,const double* column_array 
-                                              ,const int     vector_size ) 
+double dot_product_similarity_d_sse41(  const double* searched_array 
+                                       ,const double* column_array 
+                                       ,const int     vector_size ) 
 {
     double similarity = 0.0;
     int i = 0;
@@ -316,7 +316,7 @@ static double dot_product_similarity_d_sse41(  const double* searched_array
         B = _mm_loadu_pd(&column_array[i]);
         AB = _mm_mul_pd(A, B);
         sumAB = _mm_add_pd(AB, sumAB);
-    }//endfor i + 4
+    }//endfor i + 2
 
     __m128d vhigh  = _mm_unpackhi_pd( sumAB, sumAB );
     __m128d result = _mm_add_sd(sumAB, vhigh );

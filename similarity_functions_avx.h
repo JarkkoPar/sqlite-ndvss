@@ -19,7 +19,7 @@
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static float cosine_similarity_f_avx( 
+float cosine_similarity_f_avx( 
      const float*   searched_array 
     ,const float*   column_array 
     ,const int      vector_size
@@ -102,7 +102,7 @@ static float cosine_similarity_f_avx(
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static double cosine_similarity_d_avx( 
+double cosine_similarity_d_avx( 
      const double*   searched_array 
     ,const double*   column_array 
     ,const int       vector_size
@@ -183,9 +183,9 @@ static double cosine_similarity_d_avx(
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static float euclidean_distance_similarity_f_avx(   const float* searched_array,
-                                                    const float* column_array,
-                                                    const int    vector_size ) 
+float euclidean_distance_similarity_f_avx(   const float* searched_array
+                                            ,const float* column_array
+                                            ,const int    vector_size ) 
 {
     float similarity = 0.0f;
     int i = 0; 
@@ -231,9 +231,9 @@ static float euclidean_distance_similarity_f_avx(   const float* searched_array,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static double euclidean_distance_similarity_d_avx(  const double* searched_array,
-                                                    const double* column_array,
-                                                    const int    vector_size ) 
+double euclidean_distance_similarity_d_avx(  const double* searched_array
+                                            ,const double* column_array
+                                            ,const int    vector_size ) 
 {
     double similarity = 0.0;
     int i = 0; 
@@ -257,7 +257,7 @@ static double euclidean_distance_similarity_d_avx(  const double* searched_array
 
     // Handle the remaining elements.
     for( ; i < vector_size; ++i ) {
-        float AB = (searched_array[i] - column_array[i]);
+        double AB = (searched_array[i] - column_array[i]);
         similarity += (AB * AB);
     }
 
@@ -278,9 +278,9 @@ static double euclidean_distance_similarity_d_avx(  const double* searched_array
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static float dot_product_similarity_f_avx(   const float* searched_array 
-                                            ,const float* column_array 
-                                            ,const int    vector_size ) 
+float dot_product_similarity_f_avx(   const float* searched_array 
+                                     ,const float* column_array 
+                                     ,const int    vector_size ) 
 {
     float similarity = 0.0f;
     int i = 0;
@@ -322,9 +322,9 @@ static float dot_product_similarity_f_avx(   const float* searched_array
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((target("avx")))
 #endif 
-static double dot_product_similarity_d_avx(  const double* searched_array 
-                                            ,const double* column_array 
-                                            ,const int     vector_size ) 
+double dot_product_similarity_d_avx(  const double* searched_array 
+                                     ,const double* column_array 
+                                     ,const int     vector_size ) 
 {
     double similarity = 0.0;
     int i = 0;

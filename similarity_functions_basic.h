@@ -17,7 +17,7 @@
 //       Pointer to divider_b FLOAT
 // Returns: Similarity as an angle float
 //----------------------------------------------------------------------------------------
-static float cosine_similarity_f_basic( 
+float cosine_similarity_f_basic( 
      const float*   searched_array
     ,const float*   column_array 
     ,const int      vector_size
@@ -78,7 +78,7 @@ static float cosine_similarity_f_basic(
 //       Pointer to divider_b DOUBLE
 // Returns: Similarity as an angle DOUBLE
 //----------------------------------------------------------------------------------------
-static double cosine_similarity_d_basic( 
+double cosine_similarity_d_basic( 
      const double*  searched_array
     ,const double*  column_array 
     ,const int      vector_size
@@ -138,9 +138,9 @@ static double cosine_similarity_d_basic(
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-static float euclidean_distance_similarity_f_basic( const float* searched_array,
-                                                    const float* column_array,
-                                                    const int    vector_size ) 
+float euclidean_distance_similarity_f_basic( const float* searched_array
+                                            ,const float* column_array
+                                            ,const int    vector_size ) 
 {
     float similarity = 0.0f;
     int i = 0; 
@@ -175,9 +175,9 @@ static float euclidean_distance_similarity_f_basic( const float* searched_array,
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-static double euclidean_distance_similarity_d_basic( const double* searched_array,
-                                                     const double* column_array,
-                                                     const int     vector_size ) 
+double euclidean_distance_similarity_d_basic(  const double* searched_array
+                                              ,const double* column_array
+                                              ,const int     vector_size ) 
 {
     double similarity = 0.0;
     int i = 0; 
@@ -212,9 +212,9 @@ static double euclidean_distance_similarity_d_basic( const double* searched_arra
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product FLOAT
 //----------------------------------------------------------------------------------------
-static float dot_product_similarity_f_basic( const float* searched_array 
-                                            ,const float* column_array 
-                                            ,const int    vector_size ) 
+float dot_product_similarity_f_basic( const float* searched_array 
+                                     ,const float* column_array 
+                                     ,const int    vector_size ) 
 {
     float similarity = 0.0f;  
     int i = 0;
@@ -241,9 +241,9 @@ static float dot_product_similarity_f_basic( const float* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
-static float dot_product_similarity_d_basic( const double* searched_array 
-                                            ,const double* column_array 
-                                            ,const int     vector_size ) 
+double dot_product_similarity_d_basic( const double* searched_array 
+                                      ,const double* column_array 
+                                      ,const int     vector_size ) 
 {
     double similarity = 0.0;  
     int i = 0;
