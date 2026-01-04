@@ -3,7 +3,7 @@ sqlite-ndvss is a No-Dependency Vector Similarity Search (VSS) extension for SQL
 
 It enables conversion of a string containing a list of decimal numbers to a BLOB of floats or doubles for storing the data, and the use of euclidean, dot product and cosine similarity functions to perform searches. 
 
-sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. 
+sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. On Windows, use the one in the x86-folder, on Arm the one in arm64-folder, and on RISC-V the one in riscv-folder. 
 
 sqlite-ndvss was created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 
@@ -11,7 +11,7 @@ You can find example SQL queries [here](examples/examples.md).
 
 ## What kind of performance can I expect?
 
-The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of AVX/AVX2 if that is available, and an option to compile with just static loop unrolling, which speeds up the for-loops in the similarity functions.
+The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). 
 
 On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, supports AVX but not AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
 
@@ -36,6 +36,7 @@ Modern hardware gets of course much better results.
 ## Installation
 
 Copy the binaries to the folder where you have your sqlite3 executable. 
+
 Currently builds for Linux and Windows are available, for Mac you need to compile (see instructions below).
 
 ## Compilation
@@ -51,6 +52,7 @@ Currently builds for Linux and Windows are available, for Mac you need to compil
 
 **Mac**:`gcc -g -fPIC -dynamiclib sqlite-ndvss.c -o ndvss.dylib -mavx2 -mfma -Ofast -ffast-math`
 
+The ARMv8 and RISC-V libraries are compiled using zig on Linux (see Makefile).
 
 **Note** If you are running a pre-2013 machine that does not have AVX2 support, use the following compile options:
 

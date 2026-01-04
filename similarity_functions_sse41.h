@@ -16,7 +16,7 @@
 //       Pointer to divider_b FLOAT
 // Returns: Similarity as an angle float
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 float cosine_similarity_f_sse41( 
@@ -96,7 +96,7 @@ float cosine_similarity_f_sse41(
 //       Pointer to divider_b DOUBLE
 // Returns: Similarity as an angle DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 double cosine_similarity_d_sse41( 
@@ -169,7 +169,7 @@ double cosine_similarity_d_sse41(
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 float euclidean_distance_similarity_f_sse41( const float* searched_array
@@ -215,7 +215,7 @@ float euclidean_distance_similarity_f_sse41( const float* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 double euclidean_distance_similarity_d_sse41( const double* searched_array
@@ -259,7 +259,7 @@ double euclidean_distance_similarity_d_sse41( const double* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product FLOAT
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 float dot_product_similarity_f_sse41( const float* searched_array 
@@ -301,7 +301,7 @@ float dot_product_similarity_f_sse41( const float* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 __attribute__((target("sse4.1")))
 #endif 
 double dot_product_similarity_d_sse41(  const double* searched_array 

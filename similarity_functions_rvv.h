@@ -54,15 +54,15 @@ float cosine_similarity_f_rvv(
 
     // Reduce the vector to a float by summing the components. 
     vector_length = __riscv_vsetvlmax_e32m8();
-    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( result_vector, mmdividerA, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( mmdividerA, result_vector, vector_length );
     dividerA = __riscv_vfmv_f_s_f32m1_f32( result_vector );
     
     result_vector = __riscv_vfmv_v_f_f32m1(0.0f, __riscv_vsetvlmax_e32m1());
-    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( result_vector, mmdividerB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( mmdividerB, result_vector, vector_length );
     dividerB = __riscv_vfmv_f_s_f32m1_f32( result_vector );
 
     result_vector = __riscv_vfmv_v_f_f32m1(0.0f, __riscv_vsetvlmax_e32m1());
-    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( result_vector, mmsimilarity, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( mmsimilarity, result_vector, vector_length );
     similarity = __riscv_vfmv_f_s_f32m1_f32( result_vector );
 
     *divider_a = dividerA;
@@ -119,15 +119,15 @@ double cosine_similarity_d_rvv(
 
     // Reduce the vector to a float by summing the components. 
     vector_length = __riscv_vsetvlmax_e64m8();
-    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( result_vector, mmdividerA, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( mmdividerA, result_vector, vector_length );
     dividerA = __riscv_vfmv_f_s_f64m1_f64( result_vector );
     
     result_vector = __riscv_vfmv_v_f_f64m1(0.0, __riscv_vsetvlmax_e64m1());
-    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( result_vector, mmdividerB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( mmdividerB, result_vector, vector_length );
     dividerB = __riscv_vfmv_f_s_f64m1_f64( result_vector );
 
     result_vector = __riscv_vfmv_v_f_f64m1(0.0, __riscv_vsetvlmax_e64m1());
-    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( result_vector, mmsimilarity, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( mmsimilarity, result_vector, vector_length );
     similarity = __riscv_vfmv_f_s_f64m1_f64( result_vector );
 
     *divider_a = dividerA;
@@ -173,7 +173,7 @@ float euclidean_distance_similarity_f_rvv( const float* searched_array
 
     // Reduce the vector to a float by summing the components. 
     vector_length = __riscv_vsetvlmax_e32m8();
-    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( result_vector, sumAB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( sumAB, result_vector, vector_length );
     
     // Return the result as a float.
     similarity = __riscv_vfmv_f_s_f32m1_f32( result_vector );
@@ -220,7 +220,7 @@ double euclidean_distance_similarity_d_rvv( const double* searched_array
 
     // Reduce the vector to a double by summing the components. 
     vector_length = __riscv_vsetvlmax_e64m8();
-    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( result_vector, sumAB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( sumAB, result_vector, vector_length );
     
     // Return the result as a double.
     similarity = __riscv_vfmv_f_s_f64m1_f64( result_vector );
@@ -266,7 +266,7 @@ float dot_product_similarity_f_rvv( const float* searched_array
 
     // Reduce the vector to a float by summing the components. 
     vector_length = __riscv_vsetvlmax_e32m8();
-    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( result_vector, sumAB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f32m8_f32m1( sumAB, result_vector, vector_length );
     
     // Return the result as a float.
     similarity = __riscv_vfmv_f_s_f32m1_f32( result_vector );
@@ -312,7 +312,7 @@ double dot_product_similarity_d_rvv( const double* searched_array
 
     // Reduce the vector to a double by summing the components. 
     vector_length = __riscv_vsetvlmax_e64m8();
-    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( result_vector, sumAB, result_vector, vector_length );
+    result_vector = __riscv_vfredusum_vs_f64m8_f64m1( sumAB, result_vector, vector_length );
     
     // Return the result as a double.
     similarity = __riscv_vfmv_f_s_f64m1_f64( result_vector );
