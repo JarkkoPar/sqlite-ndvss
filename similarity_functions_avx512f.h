@@ -5,6 +5,12 @@
  */
 #include <immintrin.h>
 
+#if defined(__clang__)
+    #pragma clang attribute push (__attribute__((target("avx512f,evex512"))), apply_to = function)
+#elif defined(__GNUC__)
+    #pragma GCC push_options
+    #pragma GCC target("avx512f")
+#endif
 
 
 //----------------------------------------------------------------------------------------
@@ -18,10 +24,10 @@
 //       Pointer to divider_b FLOAT
 // Returns: Similarity as an angle float
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-float cosine_similarity_f_avx512f( 
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+float __attribute__((noinline)) cosine_similarity_f_avx512f( 
      const float*   searched_array 
     ,const float*   column_array 
     ,const int      vector_size
@@ -80,10 +86,10 @@ float cosine_similarity_f_avx512f(
 //       Pointer to divider_b DOUBLE
 // Returns: Similarity as an angle DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-double cosine_similarity_d_avx512f( 
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+double __attribute__((noinline)) cosine_similarity_d_avx512f( 
      const double*   searched_array 
     ,const double*   column_array 
     ,const int       vector_size
@@ -139,10 +145,10 @@ double cosine_similarity_d_avx512f(
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-float euclidean_distance_similarity_f_avx512f(  const float* searched_array
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+float __attribute__((noinline)) euclidean_distance_similarity_f_avx512f(  const float* searched_array
                                                ,const float* column_array
                                                ,const int    vector_size ) 
 {
@@ -181,10 +187,10 @@ float euclidean_distance_similarity_f_avx512f(  const float* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a distance DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-double euclidean_distance_similarity_d_avx512f( const double* searched_array
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+double __attribute__((noinline)) euclidean_distance_similarity_d_avx512f( const double* searched_array
                                                ,const double* column_array
                                                ,const int    vector_size ) 
 {
@@ -224,10 +230,10 @@ double euclidean_distance_similarity_d_avx512f( const double* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product FLOAT
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-float dot_product_similarity_f_avx512f(  const float* searched_array 
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+float __attribute__((noinline)) dot_product_similarity_f_avx512f(  const float* searched_array 
                                         ,const float* column_array 
                                         ,const int    vector_size ) 
 {
@@ -261,10 +267,10 @@ float dot_product_similarity_f_avx512f(  const float* searched_array
 //       Number of dimensions INTEGER
 // Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
-#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-__attribute__((target("avx512f")))
-#endif 
-double dot_product_similarity_d_avx512f( const double* searched_array 
+//#if defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+//__attribute__((target("avx512f")))
+//#endif 
+double __attribute__((noinline)) dot_product_similarity_d_avx512f( const double* searched_array 
                                         ,const double* column_array 
                                         ,const int     vector_size ) 
 {
@@ -288,5 +294,10 @@ double dot_product_similarity_d_avx512f( const double* searched_array
 }
 
 
+#if defined(__clang__)
+    #pragma clang attribute pop
+#elif defined(__GNUC__)
+    #pragma GCC pop_options
+#endif
 
 #endif 

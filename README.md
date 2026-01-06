@@ -3,7 +3,7 @@ sqlite-ndvss is a No-Dependency Vector Similarity Search (VSS) extension for SQL
 
 It enables conversion of a string containing a list of decimal numbers to a BLOB of floats or doubles for storing the data, and the use of euclidean, dot product and cosine similarity functions to perform searches. 
 
-sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. On Windows, use the one in the x86-folder, on Arm the one in arm64-folder, and on RISC-V the one in riscv-folder. 
+sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. On Linux, use the one in the x86-folder, on Arm the one in arm64-folder, and on RISC-V the one in riscv-folder. 
 
 sqlite-ndvss was created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 

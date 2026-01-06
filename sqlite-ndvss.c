@@ -6,6 +6,9 @@
 SQLITE_EXTENSION_INIT1
 #include <stdlib.h>
 #include <math.h>
+#if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
+#include <cpuid.h>
+#endif 
 
 #include "similarity_functions.h"
 
@@ -659,8 +662,46 @@ int sqlite3_ndvss_init( sqlite3 *db,
     LOAD_SIMILARITY_FUNCTIONS(rvv)
 #elif defined(__aarch64__)
     LOAD_SIMILARITY_FUNCTIONS(neon)
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
+    
+    // For x86_64 do a runtime check for cpu capabilities. 
+    int has_sse41   = 0
+       ,has_avx     = 0
+       ,has_avx2    = 0
+       ,has_avx512f = 0;
 
+    unsigned int eax, ebx, ecx, edx;
+
+    // 1. Check Standard Features
+    if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
+        if (ecx & (1 << 19)) has_sse41 = 1;
+        if (ecx & (1 << 28)) has_avx = 1;
+    }
+
+    // 2. Check Extended Features
+    if (__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) {
+        if (ebx & (1 << 5))  has_avx2 = 1;
+        if (ebx & (1 << 16)) has_avx512f = 1;
+    }
+
+    unsigned int osxsave_mask = (1 << 27);
+    if ((ecx & osxsave_mask) == 0) {
+        has_avx = 0;
+        has_avx2 = 0;
+        has_avx512f = 0;
+    }
+
+    if (has_avx512f) {
+        LOAD_SIMILARITY_FUNCTIONS(avx512f)
+    } else if (has_avx2) {
+        LOAD_SIMILARITY_FUNCTIONS(avx2)
+    } else if (has_avx) {
+        LOAD_SIMILARITY_FUNCTIONS(avx)
+    } else if (has_sse41) {
+        LOAD_SIMILARITY_FUNCTIONS(sse41)
+    }
+
+    /**
     __builtin_cpu_init();
     if (__builtin_cpu_supports("avx512f")) {
         LOAD_SIMILARITY_FUNCTIONS(avx512f)
@@ -671,6 +712,7 @@ int sqlite3_ndvss_init( sqlite3 *db,
     }else if( __builtin_cpu_supports("sse4.1")) {
         LOAD_SIMILARITY_FUNCTIONS(sse41)
     }
+    **/
 #endif
 
     (void)pzErrMsg;  /* Unused parameter */
