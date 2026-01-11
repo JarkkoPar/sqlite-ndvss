@@ -1,17 +1,19 @@
 # sqlite-ndvss
-sqlite-ndvss is a No-Dependency Vector Similarity Search (VSS) extension for SQLite. 
+sqlite-ndvss is a No-Dependency Vector Similarity Search (VSS) extension for SQLite. sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. 
 
 It enables conversion of a string containing a list of decimal numbers to a BLOB of floats or doubles for storing the data, and the use of euclidean, dot product and cosine similarity functions to perform searches. 
 
-sqlite-ndvss doesn't use any external dependencies to do its thing, making it portable and easy to install: just download the shared library file and copy it to where you'd like to use it. On Linux, use the one in the x86-folder, on Arm the one in arm64-folder, and on RISC-V the one in riscv-folder. 
+This extension has been used in real-world projects to perform similarity searches for manuals, product data, publicly available standards documents in PDF and other text formats. 
 
-sqlite-ndvss was created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
+There are versions available for x86_64 and Arm Linux, Windows and Mac, and even RISC-V. Of these the Mac and RISC-V versions are currently untested.  
+
+sqlite-ndvss was originally created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 
 You can find example SQL queries [here](examples/examples.md).
 
 ## What kind of performance can I expect?
 
-The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). 
+The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). In the examples-folder there are instructions on clustering the data to improve performance, however this is done outside of the extension itself.
 
 On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, supports AVX but not AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
 
@@ -32,14 +34,27 @@ The tests were done by loading the database into a `:memory:` database and timin
 
 Modern hardware gets of course much better results.
 
+In the examples.md there is a Python-script that you can use to benchmark your machine. 
+
 
 ## Installation
 
 Copy the binaries to the folder where you have your sqlite3 executable. 
 
-Currently builds for Linux and Windows are available, for Mac you need to compile (see instructions below).
+Currently builds for x86_64 & Arm Linux, Windows and Mac are available, as well as RISC-V.
 
 ## Compilation
+
+The latest version uses zig for cross-compilation and a Makefile has been added that makes use of it. 
+
+1. Install zig. 
+2. Download the source code and extract it to some folder. 
+3. Copy in the sqlite3.c, sqlite3.h and sqlite3ext.h files to the same folder (get them from https://sqlite.org/download.html). 
+4. Open terminal/command prompt and change to the directory where you have the source code files.
+5. Compile by running the command `make` in the folder. 
+
+
+You should still be able to compile ndvss using gcc as before:
 
 1. Download the source code and extract it to some folder.
 2. Copy in the sqlite3.c, sqlite3.h and sqlite3ext.h files to the same folder (get them from https://sqlite.org/download.html). 
