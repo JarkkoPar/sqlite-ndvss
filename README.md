@@ -9,7 +9,7 @@ There are versions available for x86_64 and Arm Linux, Windows and Mac, and even
 
 sqlite-ndvss was originally created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 
-You can find example SQL queries [here](examples/examples.md).
+You can find example SQL queries and Python code [here](examples/examples.md).
 
 ## What kind of performance can I expect?
 
