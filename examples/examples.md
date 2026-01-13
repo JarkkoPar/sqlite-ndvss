@@ -299,124 +299,141 @@ conn.close()
 
 # Benchmark
 
-Here's a simple benchmark that you can run to test ndvss on your machine. 
+Here's a simple benchmark that you can run to test ndvss on your machine. It creates 200,000 vectors and does a similarity search using a random vector. It benchmarks doubles and floats separately, to enable testing on hardware with less memory (such as Radxa Rock 4SE with 4GB RAM I have run this benchmark on).
 
 ```Python
 import sqlite3
 import time
 import random
 import os
+import platform
+import array
+import gc
 
 # --- Configuration ---
-# Path to the extension.
 EXT_PATH = "./ndvss.so" 
+if platform.system() == "Windows":
+    EXT_PATH = "C:\\YOUR\\PATH\\HERE\\ndvss.dll"
 
-# Number of rows to create in the dummy database
-ROW_COUNT = 1000 
-
-# Vector dimensions (OpenAI standard)
+ROW_COUNT  = 200000 
 DIMENSIONS = 1536
 
-def get_random_vector_str(dim):
-    """Generates a random vector string: '[0.123, 0.456, ...]'"""
-    # Using a list comprehension to generate random floats
-    return "[" + ",".join([f"{random.random():.6f}" for _ in range(dim)]) + "]"
+def get_random_blob(dim, typecode):
+    """Generates a raw binary blob for a C-array."""
+    vec = [random.random() for _ in range(dim)]
+    return array.array(typecode, vec).tobytes()
 
-def run_benchmark():
-    print(f"--- NDVSS Benchmark (NEON Check) ---")
-    print(f"System: {os.uname().machine} (Should be aarch64)")
-    print(f"Rows: {ROW_COUNT}")
-    print(f"Dimensions: {DIMENSIONS}")
-    print(f"Extension: {EXT_PATH}")
+def run_single_query_test(cursor, label, func_name, query_blob, dim, order_by="DESC"):
+    """Helper to run a specific similarity test."""
+    print(f"   Testing: {label} ({func_name})")
+    start_time = time.monotonic()
     
-    # 1. Connect to Memory Database
+    sql = f"""
+        SELECT ID, {func_name}(?, EMBEDDING, {dim}) as score
+        FROM embeddings 
+        ORDER BY score {order_by}
+        LIMIT 10
+    """
+    
+    cursor.execute(sql, (query_blob,))
+    results = cursor.fetchone()
+    duration = time.monotonic() - start_time
+    
+    if results:
+        print(f"     -> Time: {duration:.4f}s | Top ID: {results[0]} | Score: {results[1]:.6f}")
+    else:
+        print(f"     -> Time: {duration:.4f}s | No results found.")
+
+def run_suite(typecode, type_name):
+    """
+    Runs the full lifecycle for a specific data type (d/f).
+    Opens a FRESH connection and closes it at the end to guarantee RAM release.
+    """
+    print(f"\n==========================================")
+    print(f"[PHASE] {type_name} ({'8 bytes' if typecode=='d' else '4 bytes'})")
+    print(f"==========================================")
+    
+    # 1. Setup Fresh Connection
     try:
         conn = sqlite3.connect(":memory:")
         conn.enable_load_extension(True)
         conn.load_extension(EXT_PATH)
-        print("=> Extension loaded successfully.")
     except Exception as e:
         print(f"!! Failed to load extension: {e}")
         return
 
     cursor = conn.cursor()
-
-    # 2. Setup Tables
-    cursor.execute("CREATE TABLE embeddings_d (ID INTEGER PRIMARY KEY, EMBEDDING BLOB)")
-    cursor.execute("CREATE TABLE embeddings_f (ID INTEGER PRIMARY KEY, EMBEDDING BLOB)")
-
-    # 3. Generate and Insert Data
-    print(f"=> Generating and inserting {ROW_COUNT} vectors... (this might take a moment)")
     
+    # 2. Insert Data
+    cursor.execute("CREATE TABLE embeddings (ID INTEGER PRIMARY KEY, EMBEDDING BLOB)")
+    print("   -> Generating and inserting data...")
     start_gen = time.time()
     
-    # Generate data in Python.
-    data_batch = []
-    for i in range(ROW_COUNT):
-        vec_str = get_random_vector_str(DIMENSIONS)
-        data_batch.append((i, vec_str, vec_str)) # ID, vec for double, vec for float
+    def data_generator():
+        for i in range(ROW_COUNT):
+            yield (i, get_random_blob(DIMENSIONS, typecode))
 
-    # Insert Doubles
-    cursor.executemany(f"""
-        INSERT INTO embeddings_d (ID, EMBEDDING) 
-        VALUES (?, ndvss_convert_str_to_array_d(?, {DIMENSIONS}))
-    """, [(x[0], x[1]) for x in data_batch])
-
-    # Insert Floats
-    cursor.executemany(f"""
-        INSERT INTO embeddings_f (ID, EMBEDDING) 
-        VALUES (?, ndvss_convert_str_to_array_f(?, {DIMENSIONS}))
-    """, [(x[0], x[2]) for x in data_batch])
-    
+    cursor.executemany("INSERT INTO embeddings (ID, EMBEDDING) VALUES (?, ?)", data_generator())
     conn.commit()
-    print(f"=> Data prepared in {time.time() - start_gen:.2f}s")
+    print(f"   -> Inserted {ROW_COUNT} rows in {time.time() - start_gen:.2f}s")
 
-    # 4. Run Benchmark
-    query_vector = get_random_vector_str(DIMENSIONS)
+    # 3. Prepare Query Vector
+    query_blob = get_random_blob(DIMENSIONS, typecode)
 
-    # --- Test Doubles ---
-    print("\n--- Testing DOUBLES (ndvss_cosine_similarity_d) ---")
-    start_time = time.monotonic()
+    # 4. Run All Tests
+    # Adjust suffixes (_d or _f) based on typecode
+    suffix = "_d" if typecode == 'd' else "_f"
     
-    # We force iteration (fetchall) to ensure the sort actually completes
-    cursor.execute(f"""
-        SELECT ID, ndvss_cosine_similarity_d(
-            ndvss_convert_str_to_array_d(?, {DIMENSIONS}), 
-            EMBEDDING, 
-            {DIMENSIONS}
-        ) 
-        FROM embeddings_d 
-        ORDER BY 2
-    """, (query_vector,))
-    results = cursor.fetchall()
+    # A. Cosine (Similarity -> DESC)
+    run_single_query_test(cursor, "Cosine", f"ndvss_cosine_similarity{suffix}", query_blob, DIMENSIONS, "DESC")
     
-    duration = time.monotonic() - start_time
-    print(f"Query Time: {duration:.4f} seconds")
-    print(f"Top Match ID: {results[0][0]} (Score: {results[0][1]:.4f})")
+    # B. Euclidean Distance (Distance -> ASC)
+    run_single_query_test(cursor, "Euclidean", f"ndvss_euclidean_distance_similarity{suffix}", query_blob, DIMENSIONS, "ASC")
+    
+    # C. Euclidean Squared (Distance -> ASC)
+    run_single_query_test(cursor, "Euclidean Sq", f"ndvss_euclidean_distance_similarity_squared{suffix}", query_blob, DIMENSIONS, "ASC")
+    
+    # D. Dot Product (Similarity -> DESC)
+    run_single_query_test(cursor, "Dot Product", f"ndvss_dot_product_similarity{suffix}", query_blob, DIMENSIONS, "DESC")
 
-    # --- Test Floats ---
-    print("\n--- Testing FLOATS (ndvss_cosine_similarity_f) ---")
-    start_time = time.monotonic()
-    
-    cursor.execute(f"""
-        SELECT ID, ndvss_cosine_similarity_f(
-            ndvss_convert_str_to_array_f(?, {DIMENSIONS}), 
-            EMBEDDING, 
-            {DIMENSIONS}
-        ) 
-        FROM embeddings_f 
-        ORDER BY 2
-    """, (query_vector,))
-    results = cursor.fetchall()
-    
-    duration = time.monotonic() - start_time
-    print(f"Query Time: {duration:.4f} seconds")
-    print(f"Top Match ID: {results[0][0]} (Score: {results[0][1]:.4f})")
-
+    # 5. HARD RESET
+    print(f"   -> Closing connection to free RAM...")
     conn.close()
+    gc.collect() # Force Python to release objects
+    print(f"   -> RAM cleared.")
+
+def run_benchmark():
+    print(f"--- NDVSS Benchmark ---")
+    print(f"System: {platform.machine()}")
+    print(f"Rows: {ROW_COUNT} | Dims: {DIMENSIONS}")
+
+    # Check the instruction set that is in use.
+    try:
+        conn_check = sqlite3.connect(":memory:")
+        conn_check.enable_load_extension(True)
+        conn_check.load_extension(EXT_PATH)
+        cursor_check = conn_check.cursor()
+        
+        cursor_check.execute("SELECT ndvss_instruction_set()")
+        iset = cursor_check.fetchone()[0]
+        print(f"Active Instruction Set: {iset}")
+        
+        conn_check.close()
+    except Exception as e:
+        print(f"!! Warning: Could not determine instruction set: {e}")
+
+    # Run Doubles
+    run_suite('d', "DOUBLES")
+    
+    # Run Floats
+    run_suite('f', "FLOATS")
+
+    print("\nBenchmark Complete.")
 
 if __name__ == "__main__":
     run_benchmark()
+
+
 
 ```
 

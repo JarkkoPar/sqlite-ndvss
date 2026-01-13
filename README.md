@@ -15,6 +15,8 @@ You can find example SQL queries [here](examples/examples.md).
 
 The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). In the examples-folder there are instructions on clustering the data to improve performance, however this is done outside of the extension itself.
 
+
+
 On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, supports AVX but not AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
 
 
@@ -91,6 +93,7 @@ Once loaded, you can use the ndvss-functions in your SQL code.
 |Function|Parameters|Return values|Description|
 |--|--|--|--|
 |**ndvss_version**|none|Version number (DOUBLE)|Returns the version number of the extension.|
+|**ndvss_instruction_set**|none|Instruction set name (STRING)|Returns which extension is in use ("basic" if none).|
 |**ndvss_convert_str_to_array_f**|Array to convert (TEXT), Number of dimensions (INT)|float-array (BLOB)|Converts the given text string containing an array of decimal numbers to a BLOB containing an array of floats. The textual array can be a JSON formatted array or just a space-delimited or comma-delimeted list of decimal numbers.|
 |**ndvss_convert_str_to_array_d**|Array to convert (TEXT), Number of dimensions (INT)|double-array (BLOB)|Converts the given text string containing an array of decimal numbers to a BLOB containing an array of doubles. The textual array can be a JSON formatted array or just a space-delimited or comma-delimeted list of decimal numbers.|
 |**ndvss_cosine_similarity_f**|Vector to search for (BLOB), Vector to compare to (BLOB), Number of dimensions (INT)|Similarity score (DOUBLE)|Calculates the cosine similarity between the vectors of floats given as arguments. The vectors need to be of the same data type (float) and contain the same number of dimensions.|

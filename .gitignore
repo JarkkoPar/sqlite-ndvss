@@ -9,3 +9,5 @@ sqlite3ext.h
 *.x
 *.pdf
 *.py
+*.pdb 
+*.lib 

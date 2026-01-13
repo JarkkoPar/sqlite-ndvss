@@ -5,6 +5,7 @@
 #include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
 #include <cpuid.h>
@@ -40,7 +41,12 @@ static similarity_function_d euclidean_func_d   = euclidean_distance_similarity_
 static similarity_function_f dot_product_func_f = dot_product_similarity_f_basic;
 static similarity_function_d dot_product_func_d = dot_product_similarity_d_basic;
 
+// Information about which instruction set is in use. 
+static char g_instruction_set[8] = "none";
 
+// String helper
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
 // Function to load the functions.
 #define LOAD_SIMILARITY_FUNCTIONS(SUFFIX) \
@@ -49,7 +55,9 @@ static similarity_function_d dot_product_func_d = dot_product_similarity_d_basic
     euclidean_func_f         = euclidean_distance_similarity_f_##SUFFIX; \
     euclidean_func_d         = euclidean_distance_similarity_d_##SUFFIX; \
     dot_product_func_f       = dot_product_similarity_f_##SUFFIX; \
-    dot_product_func_d       = dot_product_similarity_d_##SUFFIX;
+    dot_product_func_d       = dot_product_similarity_d_##SUFFIX; \
+    snprintf(g_instruction_set, 8, "%s", STR(SUFFIX) );
+
 
 
 /**
@@ -463,6 +471,20 @@ static void ndvss_version( sqlite3_context* context,
 }
 
 
+
+//----------------------------------------------------------------------------------------
+// Name: ndvss_instruction_set
+// Desc: Returns the current instruction set used by ndvss.
+// Args: None.
+// Returns: The instruction set as a STRING.
+//----------------------------------------------------------------------------------------
+static void ndvss_instruction_set(  sqlite3_context* context,
+                                    int argc,
+                                    sqlite3_value** argv ) 
+{
+    sqlite3_result_text(context, g_instruction_set, -1, SQLITE_STATIC );
+}
+
 //----------------------------------------------------------------------------------------
 // Name: ndvss_convert_str_to_array_d
 // Desc: Converts a list of decimal numbers from a string to an array of doubles.
@@ -676,21 +698,18 @@ int sqlite3_ndvss_init( sqlite3 *db,
     if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
         if (ecx & (1 << 19)) has_sse41 = 1;
         if (ecx & (1 << 28)) has_avx = 1;
+        
+        if ((ecx & (1 << 27)) == 0) {
+            has_avx = 0;
+        }
     }
-
     // 2. Check Extended Features
-    if (__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) {
+    if (has_avx && __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) {
         if (ebx & (1 << 5))  has_avx2 = 1;
         if (ebx & (1 << 16)) has_avx512f = 1;
     }
 
-    unsigned int osxsave_mask = (1 << 27);
-    if ((ecx & osxsave_mask) == 0) {
-        has_avx = 0;
-        has_avx2 = 0;
-        has_avx512f = 0;
-    }
-
+    /**/
     if (has_avx512f) {
         LOAD_SIMILARITY_FUNCTIONS(avx512f)
     } else if (has_avx2) {
@@ -700,19 +719,8 @@ int sqlite3_ndvss_init( sqlite3 *db,
     } else if (has_sse41) {
         LOAD_SIMILARITY_FUNCTIONS(sse41)
     }
+    /**/
 
-    /**
-    __builtin_cpu_init();
-    if (__builtin_cpu_supports("avx512f")) {
-        LOAD_SIMILARITY_FUNCTIONS(avx512f)
-    }else if (__builtin_cpu_supports("avx2")) {
-        LOAD_SIMILARITY_FUNCTIONS(avx2)
-    }else if( __builtin_cpu_supports("avx")) {
-        LOAD_SIMILARITY_FUNCTIONS(avx)
-    }else if( __builtin_cpu_supports("sse4.1")) {
-        LOAD_SIMILARITY_FUNCTIONS(sse41)
-    }
-    **/
 #endif
 
     (void)pzErrMsg;  /* Unused parameter */
@@ -840,6 +848,20 @@ int sqlite3_ndvss_init( sqlite3 *db,
                                 SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
                                 0, // *pApp?
                                 ndvss_version, // xFunc -> Function pointer 
+                                0, // xStep?
+                                0  // xFinal?
+                                );
+    if (rc != SQLITE_OK) {
+        *pzErrMsg = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    rc = sqlite3_create_function( db, 
+                                "ndvss_instruction_set", // Function name 
+                                0, // Number of arguments
+                                SQLITE_UTF8|SQLITE_INNOCUOUS|SQLITE_DETERMINISTIC,
+                                0, // *pApp?
+                                ndvss_instruction_set, // xFunc -> Function pointer 
                                 0, // xStep?
                                 0  // xFinal?
                                 );
