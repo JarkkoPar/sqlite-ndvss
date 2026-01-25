@@ -12,7 +12,7 @@ x86:
 # --- AArch64 (ARM64) ---
 arm64:
 	mkdir -p arm64
-	zig cc -target aarch64-linux-gnu -O3 -shared -fPIC -o ./arm64/ndvss.so $(SRC)
+	zig cc -target aarch64-linux-gnu -mcpu=generic+sve2 -O3 -shared -fPIC -o ./arm64/ndvss.so $(SRC)
 
 # --- RISC-V (RV64GCV) ---
 riscv:

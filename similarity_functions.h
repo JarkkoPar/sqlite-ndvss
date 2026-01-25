@@ -9,6 +9,7 @@
 #if defined(__aarch64__)
 
 #include "similarity_functions_neon.h"
+#include "similarity_functions_sve2.h"
 
 #elif defined(__riscv) && defined(__riscv_vector)
 
