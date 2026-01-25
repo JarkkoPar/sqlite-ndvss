@@ -20,7 +20,7 @@ SQLITE_EXTENSION_INIT1
 #include "similarity_functions.h"
 
 
-#define NDVSS_VERSION_DOUBLE    0.50
+#define NDVSS_VERSION_DOUBLE    0.60
 
 
 //========================================================================================
