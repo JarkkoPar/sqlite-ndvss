@@ -10,11 +10,17 @@ SQLITE_EXTENSION_INIT1
 #if (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
 #include <cpuid.h>
 #endif 
+#if defined(__aarch64__)
+// Includes for hardware capability detection. 
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+
+#endif 
 
 #include "similarity_functions.h"
 
 
-#define NDVSS_VERSION_DOUBLE    0.50
+#define NDVSS_VERSION_DOUBLE    0.60
 
 
 //========================================================================================
@@ -58,12 +64,6 @@ static char g_instruction_set[8] = "none";
     dot_product_func_d       = dot_product_similarity_d_##SUFFIX; \
     snprintf(g_instruction_set, 8, "%s", STR(SUFFIX) );
 
-
-
-/**
- * Function generation macros. These will create the fucntions into sqlite-ndvss.c for 
- * registering them into sqlite.
- */
 
 
 //----------------------------------------------------------------------------------------
@@ -683,7 +683,22 @@ int sqlite3_ndvss_init( sqlite3 *db,
 #if defined(__riscv) && defined(__riscv_vector)
     LOAD_SIMILARITY_FUNCTIONS(rvv)
 #elif defined(__aarch64__)
-    LOAD_SIMILARITY_FUNCTIONS(neon)
+    // Make sure SVE2 capability is defined.
+    #ifndef HWCAP2_SVE2
+    #define HWCAP2_SVE2 (1 << 1)
+    #endif
+    
+    // Detect if the SVE2 instructions are available. 
+    // Retrieve hardware capabilities from the kernel using getauxval.
+    unsigned long hwcaps = getauxval(AT_HWCAP2);
+    if (hwcaps & HWCAP2_SVE2) {
+        // Use SVE2.
+        LOAD_SIMILARITY_FUNCTIONS(sve2)
+    } else {
+        // Use Neon.
+        LOAD_SIMILARITY_FUNCTIONS(neon)
+    }
+    
 #elif (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
     
     // For x86_64 do a runtime check for cpu capabilities. 
