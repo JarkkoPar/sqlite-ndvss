@@ -15,28 +15,44 @@ You can find example SQL queries and Python code [here](examples/examples.md).
 
 The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). In the examples-folder there are instructions on clustering the data to improve performance, however this is done outside of the extension itself.
 
+Below you can find benchmark results across different hardware. On Linux, the test are run on the specific cores. Those marked with Windows are executed on what ever core the OS has decided to run the code on.
+
+Results for DOUBLE:
+|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|
+|---|---|---|---|---|---|---|---|
+|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|DOUBLE|AVX512f|0.3252s|0.3224s|0.3203s|0.3239s|
+|(Windows) MSI Claw|Intel Core Ultra 7 155H|DOUBLE|AVX2|0.5230s|0.3697s|0.3125s|0.2936s|
+|Asus NV56vz|Intel Core i7 - 3610QM|DOUBLE|AVX|0.4577s|0.4419s|0.4460s|0.4707s|
+|Radxa Rock 5B|RK3588 - Cortex-A76|DOUBLE|Neon|0.6426s|0.6369s|0.6088s|0.5974s|
+|Radxa Rock 4 SE|RK3399-T - Cortex-A72|DOUBLE|Neon|1.9030s|1.8493s|1.8215s|1.7814s|
+|Radxa Rock 5B|RK3588 - Cortex-A55|DOUBLE|Neon|2.0746s|2.3460s|2.2850s|2.0168s|
+|Radxa Rock 4 SE|RK3399-T - Cortex-A53|DOUBLE|Neon|5.0274s|5.1935s|5.1899s|4.5772s|
+
+Results for FLOAT:
+|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|
+|---|---|---|---|---|---|---|---|
+|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|FLOAT|AVX512f|0.2313s|0.2270s|0.2206s|0.2239s|
+|(Windows) MSI Claw|Intel Core Ultra 7 155H|FLOAT|AVX2|0.2316s|0.2440s|0.2341s|0.2161s|
+|Asus NV56vz|Intel Core i7|FLOAT|AVX|0.3125s|0.3022s|0.3235s|0.3211s|
+|Radxa Rock 5B|RK3588 - Cortex-A76|FLOAT|Neon|0.4309s|0.4190s|0.3978s|0.4017s|
+|Radxa Rock 4 SE|RK3399-T - Cortex-A72|FLOAT|Neon|1.3502s|1.3070s|1.3568s|1.1668s|
+|Radxa Rock 5B|RK3588 - Cortex-A55|FLOAT|Neon|1.3446s|1.4941s|1.4779s|1.3456s|
+|Radxa Rock 4 SE|RK3399-T - Cortex-A53|FLOAT|Neon|3.1416s|3.2427s|3.2409s|2.8837s|
+
+Clarification of terms:
+|Term|Meaning|
+|---|---|
+|Cos|Cosine similarity|
+|Euc|Euclidean distance similarity|
+|Euc.Sq.|Squared euclidean distance similarity| 
+|Dot|Dotproduct similarity|
 
 
-On my 2012 Asus laptop (Intel Core i7 3610QM @ 2.3 GHz, 10 GB of RAM and an SSD, supports AVX but not AVX2) running Fedora Linux 39, I get following results for 200 000 random vectors with 1536 dimensions running a query with sorting based on similarity and limiting the output to 10 rows:
+The tests were done by running the benchmark code in the example. It creates a `:memory:` database with 200,000 vectors with 1536 dimensions. It then times the duration to run a SELECT statement that calculates the similarity to a random 1536 vector, ordering by the similarity score. The timing is done for vectors using doubles and floats.
 
+If you run your query in a database on disk the speed of your SSD/HDD will cause differences in the results. On the afore mentioned Asus, running from the SSD causes the Cosine similarity query (double) to run in about 1.12 seconds Modern hardware gets of course much better results.
 
-|Similarity function|DOUBLE/FLOAT|Runtime (s)|
-|--|--|--|
-|Cosine|DOUBLE|0.46|
-|Cosine|FLOAT|0.31|
-|Euclidean distance|DOUBLE|0.45|
-|Euclidean distance|FLOAT|0.30|
-|Euclidean distance squared|DOUBLE|0.44|
-|Euclidean distance squared|FLOAT|0.30|
-|Dot product|DOUBLE|0.44|
-|Dot product|FLOAT|0.29|
-
-
-The tests were done by loading the database into a `:memory:` database and timing the duration to run a SELECT statement that calculates the similarity for a random 1536 vector, ordering by the similarity score: `SELECT ID, ndvss_cosine_similarity_d( ndvss_convert_str_to_array_d('" + vector + "', 1536), EMBEDDING, 1536) FROM embeddings_d ORDER BY 2` for doubles and similarly with a table containing floats. If you run your query in a database on disk the speed of your SSD/HDD will cause differences in the results. On the afore mentioned Asus, running from the SSD causes the Cosine similarity query (double) to run in about 1.12 seconds. 
-
-Modern hardware gets of course much better results.
-
-In the examples.md there is a Python-script that you can use to benchmark your machine. 
+To benchmark your machine, in the examples.md there is a Python-script that you can use to do that. 
 
 
 ## Installation
