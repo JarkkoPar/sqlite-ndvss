@@ -11,16 +11,26 @@ SQLITE_EXTENSION_INIT1
 #include <cpuid.h>
 #endif 
 #if defined(__aarch64__)
-// Includes for hardware capability detection. 
-#include <sys/auxv.h>
-#include <asm/hwcap.h>
 
-#endif 
+    #if defined(__linux__)
+        /* Linux ARM64 */
+        #include <sys/auxv.h>
+        #include <asm/hwcap.h>
+    #elif defined(__APPLE__)
+        /* macOS ARM64 (Apple Silicon) */
+        #include <sys/types.h>
+        #include <sys/sysctl.h>
+    #elif defined(_WIN32)
+        /* Windows ARM64 */
+        #include <windows.h>
+    #endif
+
+#endif
 
 #include "similarity_functions.h"
 
 
-#define NDVSS_VERSION_DOUBLE    0.60
+#define NDVSS_VERSION_DOUBLE    0.65
 
 
 //========================================================================================
@@ -682,23 +692,37 @@ int sqlite3_ndvss_init( sqlite3 *db,
     // instruction sets. 
 #if defined(__riscv) && defined(__riscv_vector)
     LOAD_SIMILARITY_FUNCTIONS(rvv)
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) && defined(__linux__)
+    // Detect SVE2
+    
     // Make sure SVE2 capability is defined.
     #ifndef HWCAP2_SVE2
     #define HWCAP2_SVE2 (1 << 1)
     #endif
-    
-    // Detect if the SVE2 instructions are available. 
-    // Retrieve hardware capabilities from the kernel using getauxval.
+
     unsigned long hwcaps = getauxval(AT_HWCAP2);
     if (hwcaps & HWCAP2_SVE2) {
-        // Use SVE2.
         LOAD_SIMILARITY_FUNCTIONS(sve2)
     } else {
-        // Use Neon.
         LOAD_SIMILARITY_FUNCTIONS(neon)
     }
+
+#elif defined(__aarch64__) && defined(__APPLE__)
     
+LOAD_SIMILARITY_FUNCTIONS(neon)
+
+#elif defined(__aarch64__) && defined(_WIN32)
+    // Windows ARM64 detection.
+    #if defined(__ARM_FEATURE_SVE)
+    if (IsProcessorFeaturePresent(PF_ARM_SVE_INSTRUCTIONS_AVAILABLE)) {
+        LOAD_SIMILARITY_FUNCTIONS( sve2 )
+    } else {
+        LOAD_SIMILARITY_FUNCTIONS(neon)
+    }
+    #else
+    LOAD_SIMILARITY_FUNCTIONS(neon)
+    #endif 
+
 #elif (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(_M_X64) || defined(__i386__))
     
     // For x86_64 do a runtime check for cpu capabilities. 

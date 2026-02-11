@@ -5,7 +5,7 @@ It enables conversion of a string containing a list of decimal numbers to a BLOB
 
 This extension has been used in real-world projects to perform similarity searches for manuals, product data, publicly available standards documents in PDF and other text formats. 
 
-There are versions available for x86_64 and Arm Linux, Windows and Mac, and even RISC-V. Of these the Mac and RISC-V versions are currently untested.  
+There are versions available for x86_64 and Arm Linux, Windows and Mac, and even RISC-V. Of these the Mac versions are currently untested.  
 
 sqlite-ndvss was originally created to try out RAG with LLM's without having to install more full-fledged vector databases, and because SQLite is amazing.
 
@@ -15,29 +15,36 @@ You can find example SQL queries and Python code [here](examples/examples.md).
 
 The similarity functions are a *naïve* implementation, meaning they don't use any additional logic or structures to speed up the search. The only optimization in place is the use of intrinsics if any are available (on x86 SSE4.1/AVX/AVX2/AVX512F, on ARMv8 Neon, and on RISC-V RVV-extension). In the examples-folder there are instructions on clustering the data to improve performance, however this is done outside of the extension itself.
 
-Below you can find benchmark results across different hardware. On Linux, the test are run on the specific cores. Those marked with Windows are executed on what ever core the OS has decided to run the code on.
+Below you can find benchmark results across different hardware. On Linux, the test are run on the specific cores (single-threaded). Those marked with Windows are executed on what ever core the OS has decided to run the code on.
 
 Results for DOUBLE:
-|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|
-|---|---|---|---|---|---|---|---|
-|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|DOUBLE|AVX512f|0.3252s|0.3224s|0.3203s|0.3239s|
-|(Windows) MSI Claw|Intel Core Ultra 7 155H|DOUBLE|AVX2|0.5230s|0.3697s|0.3125s|0.2936s|
-|Asus NV56vz|Intel Core i7 - 3610QM|DOUBLE|AVX|0.4577s|0.4419s|0.4460s|0.4707s|
-|Radxa Rock 5B|RK3588 - Cortex-A76|DOUBLE|Neon|0.6426s|0.6369s|0.6088s|0.5974s|
-|Radxa Rock 4 SE|RK3399-T - Cortex-A72|DOUBLE|Neon|1.9030s|1.8493s|1.8215s|1.7814s|
-|Radxa Rock 5B|RK3588 - Cortex-A55|DOUBLE|Neon|2.0746s|2.3460s|2.2850s|2.0168s|
-|Radxa Rock 4 SE|RK3399-T - Cortex-A53|DOUBLE|Neon|5.0274s|5.1935s|5.1899s|4.5772s|
+|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|Comments|
+|---|---|---|---|---|---|---|---|---|
+|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|DOUBLE|AVX512f|0.3252s|0.3224s|0.3203s|0.3239s||
+|(Windows) MSI Claw|Intel Core Ultra 7 155H|DOUBLE|AVX2|0.5230s|0.3697s|0.3125s|0.2936s||
+|Asus NV56vz|Intel Core i7 - 3610QM|DOUBLE|AVX|0.4577s|0.4419s|0.4460s|0.4707s||
+|Radxa Rock 5B|RK3588 - Cortex-A76|DOUBLE|Neon|0.6426s|0.6369s|0.6088s|0.5974s||
+|Sipeed Beta-access|SpacemiT K3 - X100|DOUBLE|RVV 1.0|1.0897s|0.9490s|0.9545s|0.9528s||
+|Radxa Rock 4 SE|RK3399-T - Cortex-A72|DOUBLE|Neon|1.9030s|1.8493s|1.8215s|1.7814s||
+|Sipeed (Beta-access)|SpacemiT K3 - A100|DOUBLE|RVV 1.0|1.9836s|1.7246s|1.9153s|1.9083s|SQLite row fetching slows this core down.*|
+|Radxa Rock 5B|RK3588 - Cortex-A55|DOUBLE|Neon|2.0746s|2.3460s|2.2850s|2.0168s||
+|Radxa Rock 4 SE|RK3399-T - Cortex-A53|DOUBLE|Neon|5.0274s|5.1935s|5.1899s|4.5772s||
 
 Results for FLOAT:
-|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|
-|---|---|---|---|---|---|---|---|
-|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|FLOAT|AVX512f|0.2313s|0.2270s|0.2206s|0.2239s|
-|(Windows) MSI Claw|Intel Core Ultra 7 155H|FLOAT|AVX2|0.2316s|0.2440s|0.2341s|0.2161s|
-|Asus NV56vz|Intel Core i7|FLOAT|AVX|0.3125s|0.3022s|0.3235s|0.3211s|
-|Radxa Rock 5B|RK3588 - Cortex-A76|FLOAT|Neon|0.4309s|0.4190s|0.3978s|0.4017s|
-|Radxa Rock 4 SE|RK3399-T - Cortex-A72|FLOAT|Neon|1.3502s|1.3070s|1.3568s|1.1668s|
-|Radxa Rock 5B|RK3588 - Cortex-A55|FLOAT|Neon|1.3446s|1.4941s|1.4779s|1.3456s|
-|Radxa Rock 4 SE|RK3399-T - Cortex-A53|FLOAT|Neon|3.1416s|3.2427s|3.2409s|2.8837s|
+|System|CPU|DOUBLE/FLOAT|Instructions|Cos|Euc|Euc.Sq.|Dot|Comments|
+|---|---|---|---|---|---|---|---|---|
+|(Windows) Asus TUF A16|AMD Ryzen 9 7940HX|FLOAT|AVX512f|0.2313s|0.2270s|0.2206s|0.2239s||
+|(Windows) MSI Claw|Intel Core Ultra 7 155H|FLOAT|AVX2|0.2316s|0.2440s|0.2341s|0.2161s||
+|Asus NV56vz|Intel Core i7|FLOAT|AVX|0.3125s|0.3022s|0.3235s|0.3211s||
+|Radxa Rock 5B|RK3588 - Cortex-A76|FLOAT|Neon|0.4309s|0.4190s|0.3978s|0.4017s||
+|Sipeed (Beta-access)|SpacemiT K3 - X100|FLOAT|RVV 1.0|0.7510s|0.6790s|0.6737s|0.6673s||
+|Radxa Rock 4 SE|RK3399-T - Cortex-A72|FLOAT|Neon|1.3502s|1.3070s|1.3568s|1.1668s||
+|Radxa Rock 5B|RK3588 - Cortex-A55|FLOAT|Neon|1.3446s|1.4941s|1.4779s|1.3456s||
+|Sipeed (Beta-access)|SpacemiT K3 - A100|FLOAT|RVV 1.0|1.5155s|1.4066s|1.3828s|1.3681s|SQLite row fetching slows this core down.*|
+|Radxa Rock 4 SE|RK3399-T - Cortex-A53|FLOAT|Neon|3.1416s|3.2427s|3.2409s|2.8837s||
+
+*) The SpacemiT K3 A100 core is significantly faster when working with pure arrays. 
+
 
 Clarification of terms:
 |Term|Meaning|

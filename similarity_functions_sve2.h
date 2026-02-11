@@ -1,10 +1,11 @@
 #ifndef SIMILARITY_FUNCTIONS_SVE2_H_INCLUDED
 #define SIMILARITY_FUNCTIONS_SVE2_H_INCLUDED
-#if defined(__aarch64__)
+#if defined(__aarch64__) && defined(__ARM_FEATURE_SVE)
 /**
  * This file contains the Arm SVE2 versions of the similarity function definitions. 
  */
 #include <arm_sve.h>
+
 
 //----------------------------------------------------------------------------------------
 // Name: cosine_similarity_f_sve2
@@ -256,8 +257,8 @@ float dot_product_similarity_f_sve2( const float* searched_array
 // Returns: Similarity as a dot product DOUBLE
 //----------------------------------------------------------------------------------------
 double dot_product_similarity_d_sve2( const double* searched_array 
-                                    ,const double* column_array 
-                                    ,const int     vector_size ) 
+                                     ,const double* column_array 
+                                     ,const int     vector_size ) 
 {
     double similarity = 0.0f;
     svfloat64_t A, B, sumAB = svdup_f64(0.0f);
