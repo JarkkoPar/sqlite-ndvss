@@ -32,6 +32,12 @@ SQLITE_EXTENSION_INIT1
 
 #define NDVSS_VERSION_DOUBLE    0.65
 
+// Upper bound on the number of vector dimensions accepted by any ndvss_*
+// function. Far beyond any realistic embedding size; exists to keep
+// allocation-size arithmetic from overflowing and to cap how much memory a
+// single call can request.
+#define NDVSS_MAX_DIMENSIONS    1000000
+
 
 //========================================================================================
 // Similarity function handling.
@@ -75,6 +81,25 @@ static char g_instruction_set[8] = "none";
     snprintf(g_instruction_set, 8, "%s", STR(SUFFIX) );
 
 
+//----------------------------------------------------------------------------------------
+// Name: ndvss_vector_fits
+// Desc: Checks whether vector_size elements of elem_size bytes each fit
+//       within a buffer of blob_size_bytes bytes, using 64-bit arithmetic
+//       so the check itself cannot overflow.
+// Args: Requested/inferred number of elements,
+//       Size in bytes of one element,
+//       Actual size in bytes of the backing BLOB
+// Returns: Non-zero if it fits, 0 otherwise.
+//----------------------------------------------------------------------------------------
+static int ndvss_vector_fits( int vector_size, size_t elem_size, int blob_size_bytes )
+{
+    if( vector_size < 1 || blob_size_bytes < 0 ) {
+        return 0;
+    }
+    sqlite3_uint64 needed = (sqlite3_uint64)elem_size * (sqlite3_uint64)vector_size;
+    return needed <= (sqlite3_uint64)blob_size_bytes;
+}
+
 
 //----------------------------------------------------------------------------------------
 // Name: ndvss_cosine_similarity_f
@@ -110,12 +135,16 @@ static void ndvss_cosine_similarity_f( sqlite3_context *context
             vector_size = sqlite3_value_int(argv[2]); 
         } 
     } 
-    if( vector_size < 1 ) { 
-        vector_size = arg1_size_bytes / sizeof(float); 
-    } 
-    float* searched_array = (float *)sqlite3_value_blob(argv[0]); 
-    float* column_array   = (float *)sqlite3_value_blob(argv[1]); 
-    float dividerA = 0.0f; 
+    if( vector_size < 1 ) {
+        vector_size = arg1_size_bytes / sizeof(float);
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(float), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    float* searched_array = (float *)sqlite3_value_blob(argv[0]);
+    float* column_array   = (float *)sqlite3_value_blob(argv[1]);
+    float dividerA = 0.0f;
     float dividerB = 0.0f; 
     float similarity = cosine_func_f( searched_array, column_array, vector_size, &dividerA, &dividerB ); 
     if( dividerA == 0.0f || dividerB == 0.0f ) { 
@@ -163,12 +192,16 @@ static void ndvss_cosine_similarity_d( sqlite3_context *context
             vector_size = sqlite3_value_int(argv[2]); 
         } 
     } 
-    if( vector_size < 1 ) { 
-        vector_size = arg1_size_bytes / sizeof(double); 
-    } 
-    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]); 
-    const double* column_array = (const double *)sqlite3_value_blob(argv[1]); 
-    double dividerA = 0.0; 
+    if( vector_size < 1 ) {
+        vector_size = arg1_size_bytes / sizeof(double);
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(double), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
+    const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
+    double dividerA = 0.0;
     double dividerB = 0.0; 
     double similarity = cosine_func_d( searched_array, column_array, vector_size, &dividerA, &dividerB ); 
     if( dividerA == 0.0 || dividerB == 0.0 ) { 
@@ -218,13 +251,17 @@ static void ndvss_euclidean_distance_similarity_f( sqlite3_context* context,
       vector_size = sqlite3_value_int(argv[2]); 
     } 
   } 
-  if( vector_size < 1 ) { 
-    vector_size = arg1_size_bytes / sizeof(float); 
-  } 
-  const float* searched_array = (const float *)sqlite3_value_blob(argv[0]); 
-  const float* column_array = (const float *)sqlite3_value_blob(argv[1]); 
-  float similarity = euclidean_func_f( searched_array, column_array, vector_size ); 
-  similarity = sqrtf(similarity); 
+  if( vector_size < 1 ) {
+    vector_size = arg1_size_bytes / sizeof(float);
+  }
+  if( !ndvss_vector_fits(vector_size, sizeof(float), arg1_size_bytes) ) {
+    sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+    return;
+  }
+  const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
+  const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
+  float similarity = euclidean_func_f( searched_array, column_array, vector_size );
+  similarity = sqrtf(similarity);
   sqlite3_result_double(context, (double)similarity); 
 } 
 
@@ -266,13 +303,17 @@ static void ndvss_euclidean_distance_similarity_d(  sqlite3_context* context,
         vector_size = sqlite3_value_int(argv[2]); 
         } 
     } 
-    if( vector_size < 1 ) { 
-        vector_size = arg1_size_bytes / sizeof(double); 
-    } 
-    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]); 
-    const double* column_array = (const double *)sqlite3_value_blob(argv[1]); 
-    double similarity = euclidean_func_d( searched_array, column_array, vector_size ); 
-    similarity = sqrt(similarity); 
+    if( vector_size < 1 ) {
+        vector_size = arg1_size_bytes / sizeof(double);
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(double), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
+    const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
+    double similarity = euclidean_func_d( searched_array, column_array, vector_size );
+    similarity = sqrt(similarity);
     sqlite3_result_double(context, similarity); 
 } 
 
@@ -313,14 +354,18 @@ static void ndvss_euclidean_distance_similarity_squared_f(  sqlite3_context* con
         vector_size = sqlite3_value_int(argv[2]); 
         } 
     } 
-    if( vector_size < 1 ) { 
-        vector_size = arg1_size_bytes / sizeof(float); 
-    } 
-    const float* searched_array = (const float *)sqlite3_value_blob(argv[0]); 
-    const float* column_array = (const float *)sqlite3_value_blob(argv[1]); 
-    float similarity = euclidean_func_f( searched_array, column_array, vector_size ); 
-    sqlite3_result_double(context, (double)similarity); 
-} 
+    if( vector_size < 1 ) {
+        vector_size = arg1_size_bytes / sizeof(float);
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(float), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
+    const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
+    float similarity = euclidean_func_f( searched_array, column_array, vector_size );
+    sqlite3_result_double(context, (double)similarity);
+}
 
 
 //----------------------------------------------------------------------------------------
@@ -359,14 +404,18 @@ static void ndvss_euclidean_distance_similarity_squared_d(  sqlite3_context* con
         vector_size = sqlite3_value_int(argv[2]); 
         } 
     } 
-    if( vector_size < 1 ) { 
-        vector_size = arg1_size_bytes / sizeof(double); 
-    } 
-    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]); 
-    const double* column_array = (const double *)sqlite3_value_blob(argv[1]); 
-    double similarity = euclidean_func_d( searched_array, column_array, vector_size ); 
-    sqlite3_result_double(context, similarity); 
-} 
+    if( vector_size < 1 ) {
+        vector_size = arg1_size_bytes / sizeof(double);
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(double), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
+    const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
+    double similarity = euclidean_func_d( searched_array, column_array, vector_size );
+    sqlite3_result_double(context, similarity);
+}
 
 
 //----------------------------------------------------------------------------------------
@@ -404,12 +453,16 @@ static void ndvss_dot_product_similarity_f( sqlite3_context* context,
         vector_size = sqlite3_value_int(argv[2]); 
         } 
     }  
-    if( vector_size < 1 ) { 
+    if( vector_size < 1 ) {
         vector_size = arg1_size_bytes / sizeof(float);
-    } 
-    const float* searched_array = (const float *)sqlite3_value_blob(argv[0]); 
-    const float* column_array = (const float *)sqlite3_value_blob(argv[1]); 
-    float similarity = dot_product_func_f( searched_array, column_array, vector_size ); 
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(float), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const float* searched_array = (const float *)sqlite3_value_blob(argv[0]);
+    const float* column_array = (const float *)sqlite3_value_blob(argv[1]);
+    float similarity = dot_product_func_f( searched_array, column_array, vector_size );
     sqlite3_result_double(context, (double)similarity); 
 }
 
@@ -450,12 +503,16 @@ static void ndvss_dot_product_similarity_d( sqlite3_context* context,
         vector_size = sqlite3_value_int(argv[2]); 
         } 
     }  
-    if( vector_size < 1 ) { 
+    if( vector_size < 1 ) {
         vector_size = arg1_size_bytes / sizeof(double);
-    } 
-    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]); 
-    const double* column_array = (const double *)sqlite3_value_blob(argv[1]); 
-    double similarity = dot_product_func_d( searched_array, column_array, vector_size ); 
+    }
+    if( !ndvss_vector_fits(vector_size, sizeof(double), arg1_size_bytes) ) {
+        sqlite3_result_error(context, "Number of dimensions exceeds the size of the given arrays.", -1);
+        return;
+    }
+    const double* searched_array = (const double *)sqlite3_value_blob(argv[0]);
+    const double* column_array = (const double *)sqlite3_value_blob(argv[1]);
+    double similarity = dot_product_func_d( searched_array, column_array, vector_size );
     sqlite3_result_double(context, similarity); 
 }
 
@@ -521,8 +578,12 @@ static void ndvss_convert_str_to_array_d( sqlite3_context* context,
     sqlite3_result_error(context, "Number of dimensions is 0.", -1);
     return;
   }
-  int allocated_size = sizeof(double)*num_dimensions;
-  double* output = (double*)sqlite3_malloc(allocated_size);
+  if( num_dimensions > NDVSS_MAX_DIMENSIONS ) {
+    sqlite3_result_error(context, "Number of dimensions exceeds the maximum allowed.", -1);
+    return;
+  }
+  sqlite3_uint64 allocated_size = (sqlite3_uint64)sizeof(double) * (sqlite3_uint64)num_dimensions;
+  double* output = (double*)sqlite3_malloc64(allocated_size);
   if( output == 0 ) {
     sqlite3_result_error(context, "Out of memory.", -1);
     return;
@@ -541,7 +602,7 @@ static void ndvss_convert_str_to_array_d( sqlite3_context* context,
     ++index;
     ++i;  
   }//endwhile processing string
-  sqlite3_result_blob(context, output, allocated_size, sqlite3_free );
+  sqlite3_result_blob64(context, output, allocated_size, sqlite3_free );
 }
 
 
@@ -571,8 +632,12 @@ static void ndvss_convert_str_to_array_f( sqlite3_context* context,
     sqlite3_result_error(context, "Number of dimensions is 0.", -1);
     return;
   }
-  int allocated_size = sizeof(float)*num_dimensions;
-  float* output = (float*)sqlite3_malloc(allocated_size);
+  if( num_dimensions > NDVSS_MAX_DIMENSIONS ) {
+    sqlite3_result_error(context, "Number of dimensions exceeds the maximum allowed.", -1);
+    return;
+  }
+  sqlite3_uint64 allocated_size = (sqlite3_uint64)sizeof(float) * (sqlite3_uint64)num_dimensions;
+  float* output = (float*)sqlite3_malloc64(allocated_size);
   if( output == 0 ) {
     sqlite3_result_error(context, "Out of memory.", -1);
     return;
@@ -591,7 +656,7 @@ static void ndvss_convert_str_to_array_f( sqlite3_context* context,
     ++index;
     ++i;  
   }//endwhile processing string
-  sqlite3_result_blob(context, output, allocated_size, sqlite3_free );
+  sqlite3_result_blob64(context, output, allocated_size, sqlite3_free );
 }
 
 
@@ -624,16 +689,33 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
   }
 
   int vector_size = sqlite3_value_int(argv[2]);
+  if( vector_size <= 0 ) {
+    sqlite3_result_error(context, "Number of dimensions is 0.", -1);
+    return;
+  }
+  if( vector_size > NDVSS_MAX_DIMENSIONS ) {
+    sqlite3_result_error(context, "Number of dimensions exceeds the maximum allowed.", -1);
+    return;
+  }
   // Parse through the searched value and save it to aux-data for future
-  // use.
+  // use. The cache stores vector_size alongside the parsed data (as
+  // cache_block[0]) so a later row that supplies a different dimension
+  // count re-parses instead of reusing a differently-sized buffer.
   void* aux_array = sqlite3_get_auxdata( context, 0 );
-  double* comparison_vector = 0; 
-  if( aux_array == 0 ) {
-    comparison_vector = (double*)sqlite3_malloc(vector_size*sizeof(double));
-    if(comparison_vector == 0 ) {
+  double* cache_block = (double *)aux_array;
+  double* comparison_vector = 0;
+  if( cache_block != 0 && (int)cache_block[0] == vector_size ) {
+    comparison_vector = cache_block + 1;
+  }
+  if( comparison_vector == 0 ) {
+    sqlite3_uint64 cache_size = (sqlite3_uint64)(vector_size + 1) * sizeof(double);
+    cache_block = (double*)sqlite3_malloc64(cache_size);
+    if(cache_block == 0 ) {
       sqlite3_result_error(context, "Out of memory.", -1);
       return;
     }
+    cache_block[0] = (double)vector_size;
+    comparison_vector = cache_block + 1;
     char* search_vector = (char*)sqlite3_value_text(argv[0]);
     char* end = search_vector;
     double* index = comparison_vector;
@@ -643,14 +725,12 @@ static void ndvss_dot_product_similarity_str( sqlite3_context* context,
             // Increment endptr to skip the character
             end++;
             continue;
-      } 
+      }
       *index = strtod(end, &end);
       ++index;
       ++i;
     }//endwhile processing searched string
-    sqlite3_set_auxdata(context, 0, comparison_vector, sqlite3_free);
-  } else {
-    comparison_vector = (double *)aux_array;
+    sqlite3_set_auxdata(context, 0, cache_block, sqlite3_free);
   }
 
   // Start parsing through the second argument and calculate the
